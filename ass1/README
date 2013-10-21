@@ -1,0 +1,28 @@
+------------------------------------------------------------------------------------
+Assignment 1: 5 LKM Programming
+------------------------------------------------------------------------------------
+Credits
+    Nicolas Appel
+    Wenwen Chen
+------------------------------------------------------------------------------------
+Description
+    - Output welcome messages when mod.ko is loaded
+    - Output goodbye messages when mod.ko is unloaded
+    - Output the number of processes in the system after the welcome message
+------------------------------------------------------------------------------------
+Documentation
+------------------------------------------------------------------------------------
+Installation instructions
+    - Compile the module
+      # make
+    - View the information of mod.ko
+      # modinfo mod.ko
+    - Load mod.ko
+      # insmod mod.ko
+    - View currently loaded kernel modules in the system
+      # lsmod
+    - Unload mod.ko
+      # rmmod mod
+------------------------------------------------------------------------------------
+Additional Notes
+    
