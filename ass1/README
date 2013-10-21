@@ -15,6 +15,8 @@ Documentation
 Installation instructions
     - Compile the module
       # make
+    - Clean project
+      # make clean
     - View the information of mod.ko
       # modinfo mod.ko
     - Load mod.ko
@@ -25,4 +27,10 @@ Installation instructions
       # rmmod mod
 ------------------------------------------------------------------------------------
 Additional Notes
-    
+------------------------------------------------------------------------------------
+Questions
+    - How to avoid system map adress casting to functions?
+    - How do kernel header files declarations and system maps work together?
+      (Why do some functions work out of box, e.g. printk, but some not, e.g. nr_processes?)
+    - How can functions of the kernel be called in general?
+
