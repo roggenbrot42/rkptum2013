@@ -6,4 +6,4 @@ sysmap.h:
 	sh ./sysmap.sh
 clean:
 	make -C $(KERNELBUILD) M=$(PWD) clean
-	rm sysmap.h
+	rm -f sysmap.h
