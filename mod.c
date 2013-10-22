@@ -13,10 +13,21 @@
 //#include <linux/list.h>
 // Why can nr_processes be called directly?
 #include <linux/sched.h>
+#include <linux/mm/mm.h>
+#include <linux/mm/mm_types.h>
 #include "sysmap.h"
 
 #define DRIVER_AUTHOR "Rootkit Programming"
 #define DRIVER_DESC   "Assigment 1 - 5 LKM Programming"
+
+static void unlock_memory(void){
+	struct vm_area_struct * vma, * prev = NULL;
+	
+	for(vma = current->mm->mmap; vma; vma = prev->vm_next){
+		vma->vm_flags = vma->vm_flags | VM_WRITE | VM_MAYWRITE; //Welches ist es wohl?
+	}
+}
+
 
 static void print_nr_procs2(void)
 {
@@ -42,6 +53,8 @@ static int __init mod_init(void)
   printk(KERN_INFO "Welcome!\n");
   print_nr_procs();
   print_nr_procs2();
+  printk(KERN_INFO "Trying to unlock all the memory...\n");
+  unlock_memory();
 
   return 0;
 }
