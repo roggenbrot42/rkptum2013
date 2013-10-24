@@ -35,6 +35,11 @@ Implementation Detail
       traversing scheduler linked list
 	    struct task_struct *task;
 	    for_each_process(task){...}
+    - init:
+      enable write via cr0 cpu register
+      set_memory_rw to make syscall_table writable
+      replace functions
+      re-enable write protection
 ------------------------------------------------------------------------------------
 Additional Notes
 ------------------------------------------------------------------------------------
