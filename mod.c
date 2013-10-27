@@ -105,6 +105,7 @@ static void __exit mod_exit(void)
   cr0 = read_cr0();
   write_cr0(cr0 & ~0x00010000);
   syscall_table[__NR_read] = orig_sys_read;
+  set_memory_ro(PAGE_ALIGN((unsigned long) syscall_table) - PAGE_SIZE, 3);
   write_cr0(cr0);
   kfree(buffer);
   printk(KERN_INFO "Goodbye!\n");
