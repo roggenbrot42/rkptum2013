@@ -75,7 +75,7 @@ static void __exit mod_exit(void)
   enable_wp();
   kfree(buffer);
   while(r_count > 0){ //hack to unblock read
-	printk(KERN_INFO "%d\n", r_count);
+	printk(KERN_INFO "\n");
   }  
 }
 
