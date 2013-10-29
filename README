@@ -1,19 +1,13 @@
 ------------------------------------------------------------------------------------
-Assignment 1: 5 LKM Programming
+Assignment 2: System Call Hooking
 ------------------------------------------------------------------------------------
 Credits
     Nicolas Appel
     Wenwen Chen
 ------------------------------------------------------------------------------------
 Description
-    - Hook the read system call and output the intercepted data when reading from stdin. This
-output should be printed via printk. The interception should work by replacing the func-
-tion pointer in the system call table, then passing control back to the original system call
-handler.
-    - Output welcome messages when mod.ko is loaded
-    - Output goodbye messages when mod.ko is unloaded
-    - Output the number of processes in the system after the welcome message
-    - Two ways are used to get the current running processes
+    - Hook the read system call
+    - Output the intercepted data when reading from stdin
 ------------------------------------------------------------------------------------
 Documentation
 ------------------------------------------------------------------------------------
@@ -30,21 +24,21 @@ Installation instructions
       # lsmod
     - Unload mod.ko
       # rmmod mod
+    - Read log messages
+      # tail -f /var/log/messages
 ------------------------------------------------------------------------------------
 Implementation Detail
-    - print_nr_procs:
-      cast system symbol adress to function pointer
-      int a = ((int (*)(void))nr_processes_T)();
-    - print_nr_procs2:
-      traversing scheduler linked list
-	    struct task_struct *task;
-	    for_each_process(task){...}
+    - Get system call table from sys_call_table address:
+      void ** syscall_table = (void * *) sys_call_table_R;
+    - Disable write protection (WP) bit in register cr0
+      (WP bit is 16th bit)
+      write_cr0(read_cr0() & ~0x00010000); 
+    - Enable write protection (WP) bit in register cr0
+      write_cr0(read_cr0() | ~0x00010000); 
+    - Replace function pointer of sys_read in system call table
+      syscall_table[__NR_read] = my_read;
+    - File descriptor number of stdin is 1
 ------------------------------------------------------------------------------------
 Additional Notes
 ------------------------------------------------------------------------------------
-Questions
-    - How to avoid system map adress casting to functions correctly?
-    - How do kernel header files declarations and system maps work together?
-      (Why do some functions work out of box, e.g. printk, but some not, e.g. nr_processes?)
-    - How can functions of the kernel be called in general?
 

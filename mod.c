@@ -20,7 +20,7 @@
 #include <linux/slab.h>
 
 #define DRIVER_AUTHOR "Rootkit Programming"
-#define DRIVER_DESC   "Assigment 1 - 5 LKM Programming"
+#define DRIVER_DESC   "Assigment 1 - 2 System Call Hooking"
 
 void ** syscall_table = (void * *) sys_call_table_R;
 ssize_t (*orig_sys_read)(int fd, void *buf, size_t count);
