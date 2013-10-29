@@ -75,7 +75,7 @@ static void __exit mod_exit(void)
   enable_wp();
   kfree(buffer);
   while(r_count > 0){
-	printk(KERN_INFO "\n");
+	printk(KERN_INFO "%d\n", r_count);
   }  
 }
 
