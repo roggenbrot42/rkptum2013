@@ -6,11 +6,8 @@ Credits
     Wenwen Chen
 ------------------------------------------------------------------------------------
 Description
-    - Hook the read system call and output the intercepted data when reading from stdin. This
-output should be printed via printk. The interception should work by replacing the func-
-tion pointer in the system call table, then passing control back to the original system call
-handler.
-
+    - Hook the read system call
+    - Output the intercepted data when reading from stdin
 ------------------------------------------------------------------------------------
 Documentation
 ------------------------------------------------------------------------------------
@@ -27,8 +24,22 @@ Installation instructions
       # lsmod
     - Unload mod.ko
       # rmmod mod
+    - Read log messages
+      # tail -f /var/log/messages
 ------------------------------------------------------------------------------------
 Implementation Detail
+    Hooking:
+    - Get system call table from sys_call_table address:
+      void ** syscall_table = (void * *) sys_call_table_R;
+    - Disable write protection (WP) bit in register cr0
+      (WP bit is 16th bit)
+      write_cr0(read_cr0() & ~0x00010000); 
+    - Enable write protection (WP) bit in register cr0
+      write_cr0(read_cr0() | ~0x00010000); 
+    - Replace function pointer of sys_read in system call table
+      syscall_table[__NR_read] = my_read;
+    - File descriptor number of stdin is 0
+    
     - enable_wp() and disable_wp() dis-/enable memory write protection by flipping the WP bit in CPU register CR0
     - my_read() hook function, intercepts all read calls that affect stdin. Uses a buffer of variable size to escape
       the buffer that was passed by the caller. Uses r_count as semaphore so mod_exit can block until the function
@@ -36,7 +47,7 @@ Implementation Detail
     - mod_exit() undoes all changes to the system call table and frees the memory used by my_read. Additionally,
       this function prevents errors by blocking module removal until every my_read call has finished. It does so by
       checking the reference counter r_count and printing '\n' until all blocking read calls return.
-------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------
 Additional Notes
 
 It might be necessary to stop the rsyslog daemon in order to unload the module.
