@@ -6,6 +6,10 @@ Credits
     Wenwen Chen
 ------------------------------------------------------------------------------------
 Description
+    - Hook the read system call and output the intercepted data when reading from stdin. This
+output should be printed via printk. The interception should work by replacing the func-
+tion pointer in the system call table, then passing control back to the original system call
+handler.
     - Output welcome messages when mod.ko is loaded
     - Output goodbye messages when mod.ko is unloaded
     - Output the number of processes in the system after the welcome message
@@ -35,11 +39,6 @@ Implementation Detail
       traversing scheduler linked list
 	    struct task_struct *task;
 	    for_each_process(task){...}
-    - init:
-      enable write via cr0 cpu register
-      set_memory_rw to make syscall_table writable
-      replace functions
-      re-enable write protection
 ------------------------------------------------------------------------------------
 Additional Notes
 ------------------------------------------------------------------------------------
