@@ -1,15 +1,13 @@
 ------------------------------------------------------------------------------------
-Assignment 1: 5 LKM Programming
+Assignment 2: System Call Hooking
 ------------------------------------------------------------------------------------
 Credits
     Nicolas Appel
     Wenwen Chen
 ------------------------------------------------------------------------------------
 Description
-    - Output welcome messages when mod.ko is loaded
-    - Output goodbye messages when mod.ko is unloaded
-    - Output the number of processes in the system after the welcome message
-    - Two ways are used to get the current running processes
+    - Hook the read system call
+    - Output the intercepted data when reading from stdin
 ------------------------------------------------------------------------------------
 Documentation
 ------------------------------------------------------------------------------------
