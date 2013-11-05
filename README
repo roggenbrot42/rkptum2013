@@ -1,13 +1,14 @@
 ------------------------------------------------------------------------------------
-Assignment 2: System Call Hooking
+Assignment 4: File Hiding 
 ------------------------------------------------------------------------------------
 Credits
     Nicolas Appel
     Wenwen Chen
 ------------------------------------------------------------------------------------
 Description
-    - Hook the read system call
-    - Output the intercepted data when reading from stdin
+    - Hide files with the prefix “rootkit_” from the user when listing directories 
+      (ls).
+    - The hidden file is still accessible to anyone who knows that it is there.
 ------------------------------------------------------------------------------------
 Documentation
 ------------------------------------------------------------------------------------
@@ -24,21 +25,28 @@ Installation instructions
       # lsmod
     - Unload mod.ko
       # rmmod mod
+    - Test (Files with the prefix "rootkit_" should not be listed any more, but are 
+      still accessible)
+      $ ls (-a -l)
 ------------------------------------------------------------------------------------
-Implementation Detail
-    - print_nr_procs:
-      cast system symbol adress to function pointer
-      int a = ((int (*)(void))nr_processes_T)();
-    - print_nr_procs2:
-      traversing scheduler linked list
-	    struct task_struct *task;
-	    for_each_process(task){...}
+Implementation Details
+    - All code related to file hiding can be found in the file_hiding.* files
+    - Using the tool strace, one can find out that "ls" uses the system call 
+      "sys_getdents" with file descriptor 3
+    - Hooking the system call "sys_getdents":
+      - When fd is 3, the struct linux_dirent will be iterated and checked for 
+        occurrence of dirent->d_name (file name) starting with the predefined  
+        prefix "rootkit_"
+      - Files beginning with the predefined prefix will be removed from the list 
+        by shifting the rest of the list accordingly using the function "memmove"
+    Unhooking:
+    - Restore original "sys_getdents"
+    - The function "unhide file" prevents errors by blocking module removal 
+      until every my_sys_getdents has finished. It does so by checking the 
+      reference counter r_count and printing '\n' until all blocking my_sys_getdents 
+      calls return.
 ------------------------------------------------------------------------------------
 Additional Notes
 ------------------------------------------------------------------------------------
 Questions
-    - How to avoid system map adress casting to functions correctly?
-    - How do kernel header files declarations and system maps work together?
-      (Why do some functions work out of box, e.g. printk, but some not, e.g. nr_processes?)
-    - How can functions of the kernel be called in general?
 
