@@ -1,0 +1,43 @@
+------------------------------------------------------------------------------------
+Assignment 3: Process Hiding
+------------------------------------------------------------------------------------
+Credits
+    Nicolas Appel
+    Wenwen Chen
+------------------------------------------------------------------------------------
+Description
+    - Hide process from proc fs, ps and pstree
+------------------------------------------------------------------------------------
+Documentation
+------------------------------------------------------------------------------------
+Installation instructions
+    - Compile the module
+      # make
+    - Clean project
+      # make clean
+    - View the information of rootkit.ko
+      # modinfo rootkit.ko
+    - Load rootkit.ko
+      # insmod rootkit.ko hide_pid=xxx,yyy
+    - View currently loaded kernel modules in the system
+      # lsmod
+    - Unload mod.ko
+      # rmmod mod
+    - Read log messages
+      # tail -f /var/log/messages
+------------------------------------------------------------------------------------
+Implementation Detail
+    All code related to process hiding is found in the process_hiding.* files
+    To hide a pid, provide the pid at module load with the hide_pid parameter
+    
+    Hooking proc fops:
+    - Get /proc/ root inode and replace its readdir operation by the rootkit's own
+    "proc_readdir". This function simply replaces the provided filldir function by
+    a filldir function that filters out the directories of all given (see above) PIDs. 
+    
+    Unhooking:
+    - Restore original fops
+
+-----------------------------------------------------------------------------------
+Additional Notes
+-----------------------------------------------------------------------------------
