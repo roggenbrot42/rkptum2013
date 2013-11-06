@@ -17,14 +17,14 @@ Installation instructions
       # make
     - Clean project
       # make clean
-    - View the information of mod.ko
-      # modinfo mod.ko
-    - Load mod.ko
-      # insmod mod.ko
+    - View the information of rootkit.ko
+      # modinfo rootkit.ko
+    - Load rootkit.ko
+      # insmod rootkit.ko
     - View currently loaded kernel modules in the system
       # lsmod
-    - Unload mod.ko
-      # rmmod mod
+    - Unload rookit.ko
+      # rmmod rootkit
     - Test (Files with the prefix "rootkit_" should not be listed any more, but are 
       still accessible)
       $ ls (-a -l)
