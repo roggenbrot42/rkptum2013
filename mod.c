@@ -5,7 +5,6 @@
 #include "process_hiding.h"
 #include "file_hiding.h"
 #include "sysmap.h"
-#include "hooking.h"
 
 MODULE_LICENSE("GPL");
 

