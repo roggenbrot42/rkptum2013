@@ -21,7 +21,7 @@ static int __init mod_init(void)
 
 static void __exit mod_exit(void)
 {
-	return;
+  unhide_code();
 }
 
 
