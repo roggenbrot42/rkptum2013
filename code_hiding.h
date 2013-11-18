@@ -17,4 +17,7 @@
 void hide_code(void);
 int unhide_code(void * data);
 
+//extern void hide_code(void);
+//extern void unhide_code(void);
+//extern void make_module_removable(void);
 #endif

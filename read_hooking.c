@@ -70,6 +70,7 @@ static ssize_t my_read(int fd, void *buf, size_t count){
             }
           }
       }
+      printk(KERN_INFO "finished\n");      
 
     }
   }
