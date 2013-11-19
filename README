@@ -1,0 +1,56 @@
+------------------------------------------------------------------------------------
+Assignment 5: Code Hiding
+------------------------------------------------------------------------------------
+Credits
+    Nicolas Appel
+    Wenwen Chen
+------------------------------------------------------------------------------------
+Description
+    - Hide the kernel module from /sys/module and lsmod
+------------------------------------------------------------------------------------
+Documentation
+------------------------------------------------------------------------------------
+Installation instructions
+    - Compile the module
+      # make
+    - Insert the module
+      # insmod rootkit.ko
+    - Hide the module
+      # hide
+    - Print "Pong!" in the kernel log
+      # ping
+    - Unhide the module
+      # unhide
+    - Remove the module
+      # rmmod rootkit    
+-----------------------------------------------------------------------------------
+Implementation Details
+
+Command handling:
+	To listen to commands, the module hooks the read system call (commands.c).
+	A list of all processes that read from stdin is maintained in form of the
+	taskinput_buffer struct. This is done to prevent other processes writing to
+	the same buffer as the tty1 buffer that we currently intend to read from.
+	Of course this means, that any process can command our rootkit. The buffer
+	is managed by the bufpos pointer. Commands are executed by typing them in
+	the shell and then pressing enter. The final 0x0d byte is important to make
+	sure the action was performed intentionally.
+	The commands currently known to the module are: hide, unhide and ping.
+		- Hide and unhide hide/unhide the kernel module.
+		- Ping makes the module write "Pong!" to the kernel log
+	
+Module hiding:
+	Initiated by hide_code() found in code_hiding.c
+	It hides the module by patching the file operations of the /sys/module
+	folder and by removing it from the linked module list.
+	Hiding /sys/module/rootkit/ leaves the functionality of lsmod untouched
+	since it uses /dev/modules as its source. Removing the module from the list
+	also removes it from /dev/modules. 
+-----------------------------------------------------------------------------------
+Additional Notes
+It is possible to actually remove the sysfs directory, although this lead to a 
+messed up reference counter. If this bug could be fixed somehow, it'd be a nicer
+way to hide modules.
+-----------------------------------------------------------------------------------
+Questions
+-----------------------------------------------------------------------------------
