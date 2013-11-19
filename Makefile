@@ -1,10 +1,10 @@
 obj-m = rootkit.o
 
 #rootkit-objs += process_hiding.o
-#rootkit-objs += commands.o
+rootkit-objs += commands.o
 rootkit-objs += code_hiding.o
 #rootkit-objs += execve_hooking.o
-rootkit-objs += read_hooking.o
+#rootkit-objs += read_hooking.o
 rootkit-objs += mod.o
 
 KERNELBUILD = /lib/modules/$(shell uname -r)/build
