@@ -128,9 +128,9 @@ int make_module_removable(void * data){
   //THIS_MODULE->sect_attrs = tmp_sect;
   //THIS_MODULE->notes_attrs = tmp_notes;
   printk(KERN_INFO "holders dir name: %s\n", THIS_MODULE->holders_dir->name);
-  error = ((int (*)(struct kobject *, struct kobject *))kobject_move_T)(tmp_kobj, tmp_parent);
+  //error = ((int (*)(struct kobject *, struct kobject *))kobject_move_T)(tmp_kobj, tmp_parent);
 	//tmp_kobj->sd = tmp_sd;
-  //error = kobject_add(tmp_kobj, tmp_parent, tmp_kobj->name);
+  error = kobject_add(tmp_kobj, tmp_parent, "%s" ,tmp_kobj->name);
   printk(KERN_INFO "module removable, error: %d\n", module_refcount(THIS_MODULE));
   //kobject_put(tmp_kobj);
   //kobject_put(tmp_kobj);
