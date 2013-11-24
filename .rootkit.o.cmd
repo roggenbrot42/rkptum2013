@@ -1,1 +1,0 @@
-cmd_/home/wenwen/rootkit/rkptum2013/rootkit.o := ld -m elf_x86_64   -r -o /home/wenwen/rootkit/rkptum2013/rootkit.o /home/wenwen/rootkit/rkptum2013/socket_hiding.o /home/wenwen/rootkit/rkptum2013/mod.o 

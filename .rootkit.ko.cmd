@@ -1,1 +1,0 @@
-cmd_/home/wenwen/rootkit/rkptum2013/rootkit.ko := ld -r -m elf_x86_64 -T /root/linux-3.10.16/scripts/module-common.lds --build-id  -o /home/wenwen/rootkit/rkptum2013/rootkit.ko /home/wenwen/rootkit/rkptum2013/rootkit.o /home/wenwen/rootkit/rkptum2013/rootkit.mod.o
