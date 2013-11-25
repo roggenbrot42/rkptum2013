@@ -43,11 +43,11 @@ Technical note
     - Row length of the udp file is 128
     - A seq_file has four seq_operations:
       - start()
-        initialize the file to the begining
+        initialize the file
       - stop()
         close the file
       - next() 
-        go to the next record in file
+        go to the next record in the file
       - show() 
         fill buffer of seq_file with one text row
         This function is interesting for us to hide sockets
@@ -55,16 +55,19 @@ Technical note
 Implementation Details
   - Hook seq_operation show()
     - Get tcp_seq_afinfo from data under the path "/proc/net/tcp" and "/proc/net/udp" 
-    - Store the origin show() from seq_ops.show and rewrite it
-    - The show() of a seq file is defined: int show(struct seq_file * seq, void * v);
+    - Store the original show() function pointer from seq_ops.show and rewrite the
+      function
+    - The show() function of a seq file is defined as follows:
+      int show(struct seq_file * seq, void * v);
       (v is actually a pointer to a sock structure)
-    - If one of given ports are appeared in a row, then shift the count of seq_file
+    - If one of the given ports appears in a row, then decrement the count of
+      seq_file accordingly, depending on the row length
   - Hook syscall recvmsg
-    - Store the origin sys_recvmsg from syscall_table and rewrite it
-    - Check if the current socket (using file description number) is netlink. 
-    - Go through the netlink messages (struct nlmsghdr), wenn one of given ports 
-      is source/destination port of the message, shift the following messages to 
-      override the message and reduce the return value (the number of received bytes)
+    - Store the original sys_recvmsg from the syscall_table and rewrite it
+    - Check if the current socket (using file descriptor number) is type netlink. 
+    - Go through the netlink messages (struct nlmsghdr), when one of the given ports 
+      is the source/destination port of the message, shift the following messages to 
+      overwrite the message and reduce the return value (the number of received bytes)
 -----------------------------------------------------------------------------------
 Additional Notes
-  - Wenn removing all recvmsg information and return 0. ss will print EOF on netlink
+  - When removing all received messages in the new recvmsg function, then the function will return 0. ss will then print EOF on netlink

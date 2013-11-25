@@ -159,8 +159,8 @@ moved:    diag_msg = NLMSG_DATA(nl);
           for(i=0; i<ports_tcp_num; i++){
             if(src_port == ports_tcp[i] || des_port == ports_tcp[i]){
               retVal -= NLMSG_ALIGN(nl->nlmsg_len);
-              memmove(nl,nl2,msgLen);
-              if(NLMSG_OK(nl, msgLen)){
+              if(NLMSG_OK(nl2, msgLen)){
+                memmove(nl,nl2,msgLen);
                 goto moved;
               }else{
                 //FIXME wenn 0, then ss prints EOF on netlink
