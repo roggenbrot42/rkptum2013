@@ -1,12 +1,15 @@
 ------------------------------------------------------------------------------------
-Assignment 5: Code Hiding
+Assignment 6: Socket Hiding
 ------------------------------------------------------------------------------------
 Credits
     Nicolas Appel
     Wenwen Chen
 ------------------------------------------------------------------------------------
 Description
-    - Hide the kernel module from /sys/module and lsmod
+    - Hide the UDP/TCP sockets from users. 
+    - Sockets to be hidden can be speified by passing ports:
+      - ports_TCP=...,...
+      - ports_UDP=...,...
 ------------------------------------------------------------------------------------
 Documentation
 ------------------------------------------------------------------------------------
@@ -14,43 +17,54 @@ Installation instructions
     - Compile the module
       # make
     - Insert the module
-      # insmod rootkit.ko
-    - Hide the module
-      # hide
-    - Print "Pong!" in the kernel log
-      # ping
-    - Unhide the module
-      # unhide
+      # insmod rootkit.ko [ports_TCP=...,... ports_UDP=...,...]
     - Remove the module
       # rmmod rootkit    
+    - Look up TCP sockets
+      $ ss -t
+      or
+      $ netstat -t
+    - Look up UDP sockets
+      $ ss -u
+      or
+      $ netstat -u
+-----------------------------------------------------------------------------------
+Technical note
+  - Work flow of netstat
+	  - Acquire TCP socket information: read /proc/net/tcp
+	  - Acquire UDP socket information: read /proc/net/udp
+  - Work flow of ss
+	  - Acquire TCP socket information: use netlink socket and syscall sendmsg/recvmsg
+	  - Acquire UDP socket information: read /proc/net/udp
+  - File tcp/udp
+    - The file tcp/udp is a sequence file (seq_file)
+    - Socket addresses and ports are stored in hex 
+    - Row length of the tcp file is 150
+    - Row length of the udp file is 128
+    - A seq_file has four seq_operations:
+      - start()
+        initialize the file to the begining
+      - stop()
+        close the file
+      - next() 
+        go to the next record in file
+      - show() 
+        fill buffer of seq_file with one text row
+        This function is interesting for us to hide sockets
 -----------------------------------------------------------------------------------
 Implementation Details
-
-Command handling:
-	To listen to commands, the module hooks the read system call (commands.c).
-	A list of all processes that read from stdin is maintained in form of the
-	taskinput_buffer struct. This is done to prevent other processes writing to
-	the same buffer as the tty1 buffer that we currently intend to read from.
-	Of course this means, that any process can command our rootkit. The buffer
-	is managed by the bufpos pointer. Commands are executed by typing them in
-	the shell and then pressing enter. The final 0x0d byte is important to make
-	sure the action was performed intentionally.
-	The commands currently known to the module are: hide, unhide and ping.
-		- Hide and unhide hide/unhide the kernel module.
-		- Ping makes the module write "Pong!" to the kernel log
-	
-Module hiding:
-	Initiated by hide_code() found in code_hiding.c
-	It hides the module by patching the file operations of the /sys/module
-	folder and by removing it from the linked module list.
-	Hiding /sys/module/rootkit/ leaves the functionality of lsmod untouched
-	since it uses /dev/modules as its source. Removing the module from the list
-	also removes it from /dev/modules. 
+  - Hook seq_operation show()
+    - Get tcp_seq_afinfo from data under the path "/proc/net/tcp" and "/proc/net/udp" 
+    - Store the origin show() from seq_ops.show and rewrite it
+    - The show() of a seq file is defined: int show(struct seq_file * seq, void * v);
+      (v is actually a pointer to a sock structure)
+    - If one of given ports are appeared in a row, then shift the count of seq_file
+  - Hook syscall recvmsg
+    - Store the origin sys_recvmsg from syscall_table and rewrite it
+    - Check if the current socket (using file description number) is netlink. 
+    - Go through the netlink messages (struct nlmsghdr), wenn one of given ports 
+      is source/destination port of the message, shift the following messages to 
+      override the message and reduce the return value (the number of received bytes)
 -----------------------------------------------------------------------------------
 Additional Notes
-It is possible to actually remove the sysfs directory, although this lead to a 
-messed up reference counter. If this bug could be fixed somehow, it'd be a nicer
-way to hide modules.
------------------------------------------------------------------------------------
-Questions
------------------------------------------------------------------------------------
+  - Wenn removing all recvmsg information and return 0. ss will print EOF on netlink
