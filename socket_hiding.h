@@ -1,7 +1,7 @@
-#ifndef SOCKET_HIDING_H
-#define SOCKET_HIDING_H
+#ifndef SOCKETHIDING_H
+#define SOCKETHIDING_H
 
-void hide_socket(void);
-void unhide_socket(void);
+extern void hide_sockets(void);
+extern void unhide_sockets(void);
 
 #endif
