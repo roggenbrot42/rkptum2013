@@ -22,3 +22,24 @@
 
 #/var/log/messages softlink
 messages
+.code_hiding.o.cmd
+.commands.o.cmd
+.file_hiding.o.cmd
+.mod.o.cmd
+.process_hiding.o.cmd
+.rootkit.ko.cmd
+.rootkit.mod.o.cmd
+.rootkit.o.cmd
+.socket_hiding.o.cmd
+.tmp_versions/
+Module.symvers
+lsof_strace.txt
+modules.order
+rootkit.mod.c
+ss_strace
+ss_strace.txt
+strace_netstat.txt
+strace_rmmod.txt
+sysmap.h
+tcp_netstat_trace.txt
+udp_netstat_trace.txt
