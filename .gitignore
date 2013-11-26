@@ -1,6 +1,9 @@
 # Object files
 *.o
+*.o.cmd
 *.ko
+*.mod.*
+*.rootkit.*
 
 # Libraries
 *.lib

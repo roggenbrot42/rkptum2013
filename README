@@ -7,9 +7,15 @@ Credits
 ------------------------------------------------------------------------------------
 Description
     - Hide the UDP/TCP sockets from users. 
+<<<<<<< HEAD
     - Sockets to be hidden can be specified by passing ports (source ports only):
       - tcp_ports=...,...
       - udp_ports=...,...
+=======
+    - Sockets to be hidden can be speified by passing ports:
+      - ports_TCP=...,...
+      - ports_UDP=...,...
+>>>>>>> ass6
 ------------------------------------------------------------------------------------
 Documentation
 ------------------------------------------------------------------------------------
@@ -17,7 +23,11 @@ Installation instructions
     - Compile the module
       # make
     - Insert the module
+<<<<<<< HEAD
       # insmod rootkit.ko [tcp_ports=...,... udp_ports=...,...]
+=======
+      # insmod rootkit.ko [ports_TCP=...,... ports_UDP=...,...]
+>>>>>>> ass6
     - Remove the module
       # rmmod rootkit    
     - Look up TCP sockets
@@ -65,6 +75,7 @@ Implementation Details
   - Hook syscall recvmsg
     - Store the original sys_recvmsg from the syscall_table and rewrite it
     - Check if the current socket (using file descriptor number) is type netlink. 
+<<<<<<< HEAD
     - Go through the netlink messages (struct nlmsghdr), if one of the given ports 
       is the source port of the message, shift the following messages to 
       overwrite the message and reduce the return value (the number of received bytes)
@@ -72,3 +83,11 @@ Implementation Details
 -----------------------------------------------------------------------------------
 Additional Notes
 
+=======
+    - Go through the netlink messages (struct nlmsghdr), when one of the given ports 
+      is the source/destination port of the message, shift the following messages to 
+      overwrite the message and reduce the return value (the number of received bytes)
+-----------------------------------------------------------------------------------
+Additional Notes
+  - When removing all received messages in the new recvmsg function, then the function will return 0. ss will then print EOF on netlink
+>>>>>>> ass6

