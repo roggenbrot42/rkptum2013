@@ -178,10 +178,10 @@ static void parse_command(const char * cmdstr){
 		
 	cmd_num = strtoh(pch, cmdlen); //generate hashcode
 
-	printk(KERN_INFO "name: %s, code: %lu\n", pch, cmd_num);	
+	//printk(KERN_INFO "name: %s, code: %lu\n", pch, cmd_num);	
 	
 	list_for_each_entry(cmd, &commands_head.list, list){
-		printk(KERN_INFO "found: %s, code: %lu\n", cmd->name, cmd->hashcode);
+		//printk(KERN_INFO "found: %s, code: %lu\n", cmd->name, cmd->hashcode);
 		if(cmd->hashcode == cmd_num){
 			switch(cmd->arg_type){
 			case INTARG:
@@ -197,7 +197,6 @@ static void parse_command(const char * cmdstr){
 					printk(KERN_INFO "Expected argument of type int array\n");		
 					goto out;
 				}
-				//printk(KERN_INFO "Int list: %s\n", parg);
 				pch = strsep(&parg, ",");
 				while(pch != NULL){
 					error = sscanf(pch, "%d", &i);

