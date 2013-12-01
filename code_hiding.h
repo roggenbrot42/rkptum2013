@@ -19,5 +19,5 @@ int unhide_code(void * data);
 
 //extern void hide_code(void);
 //extern void unhide_code(void);
-extern int make_module_removable(void * data);
+extern int make_module_removable(void);
 #endif
