@@ -1,21 +1,13 @@
-------------------------------------------------------------------------------------
-Assignment 6: Socket Hiding
+Assignment 6: Command and Control & Privilege Escalation 
 ------------------------------------------------------------------------------------
 Credits
     Nicolas Appel
     Wenwen Chen
 ------------------------------------------------------------------------------------
 Description
-    - Hide the UDP/TCP sockets from users. 
-<<<<<<< HEAD
-    - Sockets to be hidden can be specified by passing ports (source ports only):
-      - tcp_ports=...,...
-      - udp_ports=...,...
-=======
-    - Sockets to be hidden can be speified by passing ports:
-      - ports_TCP=...,...
-      - ports_UDP=...,...
->>>>>>> ass6
+    - File hiding, process hiding, module hiding, and socket hiding controlled by 
+      self-defined commands
+    - Escalates the current privileges to root by manipulating the current shell 
 ------------------------------------------------------------------------------------
 Documentation
 ------------------------------------------------------------------------------------
@@ -23,71 +15,51 @@ Installation instructions
     - Compile the module
       # make
     - Insert the module
-<<<<<<< HEAD
-      # insmod rootkit.ko [tcp_ports=...,... udp_ports=...,...]
-=======
-      # insmod rootkit.ko [ports_TCP=...,... ports_UDP=...,...]
->>>>>>> ass6
+      # insmod rootkit.ko 
     - Remove the module
       # rmmod rootkit    
-    - Look up TCP sockets
-      $ ss -t
-      or
-      $ netstat -t
-    - Look up UDP sockets
-      $ ss -u
-      or
-      $ netstat -u
+    - Hide module
+      # hideme
+    - Show module
+      # unhideme
+    - Hide processes
+      # hidepid pid1,pid2,...
+    - Show hidden processes
+      # unhidepc
+    - Hide files with the prefix "rootkit_"
+      # hidefile
+    - Show hidden files
+      # unhidef
+    - Hide tcp sockets
+      # socktcp port1,port2,...
+    - Hide udp sockets
+      # sockudp port1,port2,...
+    - TODO Show hidden sockets
+    - Privilege Escalation
+      # sueme
 -----------------------------------------------------------------------------------
 Technical note
-  - Work flow of netstat
-	  - Acquire TCP socket information: read /proc/net/tcp
-	  - Acquire UDP socket information: read /proc/net/udp
-  - Work flow of ss
-	  - Acquire TCP socket information: use netlink socket and syscall sendmsg/recvmsg
-	  - Acquire UDP socket information: read /proc/net/udp
-  - File tcp/udp
-    - The file tcp/udp is a sequence file (seq_file)
-    - Socket addresses and ports are stored in hex 
-    - Row length of the tcp file is 150
-    - Row length of the udp file is 128
-    - A seq_file has four seq_operations:
-      - start()
-        initialize the file
-      - stop()
-        close the file
-      - next() 
-        go to the next record in the file
-      - show() 
-        fill buffer of seq_file with one text row
-        This function is interesting for us to hide sockets
+  - Every process in linux has two sets of credentials, task -> real_cred points
+    real subjective task credentials and task -> cred points effective subjective 
+    task credentials. Both are const, not modifyable. The following 4 functions are 
+    provided to modify the credentials of a process:
+      - struct cred *prepare_creds(void); 
+        Create a new set of credentials, which is a copy of the current credentials 
+        but modifyable.
+      - const struct cred *override_creds(const struct cred *);
+        Override the current process's subjective credentials (task -> cred) temporarily
+      - void revert_creds(const struct cred *);
+        Revert a temporary subjective credentials override
+      - int commit_creds(struct cred *); 
+        Install a new set of credentials to the current process
 -----------------------------------------------------------------------------------
 Implementation Details
-  - Hook seq_operation show()
-    - Get tcp_seq_afinfo from data under the path "/proc/net/tcp" and "/proc/net/udp" 
-    - Store the original show() function pointer from seq_ops.show and rewrite the
-      function
-    - The show() function of a seq file is defined as follows:
-      int show(struct seq_file * seq, void * v);
-      (v is actually a pointer to a sock structure)
-    - If one of the given ports appears in a row, then decrement the count of
-      seq_file accordingly, depending on the row length
-  - Hook syscall recvmsg
-    - Store the original sys_recvmsg from the syscall_table and rewrite it
-    - Check if the current socket (using file descriptor number) is type netlink. 
-<<<<<<< HEAD
-    - Go through the netlink messages (struct nlmsghdr), if one of the given ports 
-      is the source port of the message, shift the following messages to 
-      overwrite the message and reduce the return value (the number of received bytes)
-    - If nothing is left, append a NLMSG_DONE struct
+  - Privilege Escalation
+    - prepare_creds() creates a new set of credentials, which is modifyable.
+    - change real uid, real gid, effective uid, effective gid, uid for VFS operations
+      and gid for VFS operations to root id
+    - commit_creds() installs new credentials upon the current task
 -----------------------------------------------------------------------------------
 Additional Notes
 
-=======
-    - Go through the netlink messages (struct nlmsghdr), when one of the given ports 
-      is the source/destination port of the message, shift the following messages to 
-      overwrite the message and reduce the return value (the number of received bytes)
------------------------------------------------------------------------------------
-Additional Notes
-  - When removing all received messages in the new recvmsg function, then the function will return 0. ss will then print EOF on netlink
->>>>>>> ass6
+
