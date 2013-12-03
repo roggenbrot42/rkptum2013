@@ -59,7 +59,20 @@ Implementation Details
     - change real uid, real gid, effective uid, effective gid, uid for VFS operations
       and gid for VFS operations to root id
     - commit_creds() installs new credentials upon the current task
+  - Command reading: See the README of the last assignment
+  - Command parsing:
+    All input with max. 8 characters is copied into a 64bit integer variable. This is to
+    improve the performance when finding the the command in the command list and also the
+    reason why commands mustn't be longer than 8 chars. All commands are stored in a
+    'command' struct, that contains its name, length of the name, the 'hashcode' (the 64bit 
+    number), an indicator for the type of argument, a void pointer to the function that 
+    shall be invoked and the list structure. It would have been more elegant to store the 
+    name and the 'hashcode' in a union, but that would still require a way to convert the 
+    input.
+    Currently, 3 types of arguments are supported: NOARG (no arguments), INTARG (single int),
+    INTLST (comma separated list of ints). The format is: command argument(, argument2)*
+    
 -----------------------------------------------------------------------------------
 Additional Notes
-
+	To unload the module, all other terminal sessions have to disconnect or write to stdin.
 
