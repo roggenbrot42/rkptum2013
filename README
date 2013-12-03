@@ -1,4 +1,4 @@
-Assignment 6: Command and Control & Privilege Escalation 
+Assignment 7: Command and Control & Privilege Escalation 
 ------------------------------------------------------------------------------------
 Credits
     Nicolas Appel
@@ -24,8 +24,6 @@ Installation instructions
       # unhideme
     - Hide processes
       # hidepid pid1,pid2,...
-    - Show hidden processes
-      # unhidepc
     - Hide files with the prefix "rootkit_"
       # hidefile
     - Show hidden files

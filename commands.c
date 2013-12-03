@@ -205,7 +205,7 @@ static void parse_command(const char * cmdstr){
 				}
 			break;
 			case NOARG:
-				printk(KERN_INFO "noarg\n");
+				//printk(KERN_INFO "noarg\n");
 				invoke_cmd(cmd, void,);
 			break;
 			}
