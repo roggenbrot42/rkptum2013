@@ -1,69 +1,49 @@
+#include <linux/kernel.h>
+#include <linux/module.h>
 #include <linux/types.h>
+#include <asm/desc_defs.h>
+#include <asm/pgtable.h>
 
 #include "hooking.h"
 
-// and finally, sys_call_table pointer
-//sys_call_ptr_t *_sys_call_table = NULL;
+void ** syscall_tab = NULL;
 
-void find_syscall_table() {
-    // struct for IDT register contents
-    struct desc_ptr idtr;
+void ** find_syscall_table() {
+	unsigned long syscall_handler_addr;
+	unsigned char * p;
 
-    // pointer to IDT table of desc structs
-    gate_desc *idt_table;
+	unsigned char* limit;
+	unsigned int * table;	
 
-    // gate struct for int 0x80
-    gate_desc *system_call_gate;
+	rdmsrl(MSR_LSTAR, syscall_handler_addr);
+	limit = (unsigned char*) syscall_handler_addr + 128;	
+	
+	for(p = (unsigned char*) syscall_handler_addr; (u64)p < (u64) limit; p++){
+		/*
+		* IA64 opcode for: "call *syscall_table(,%rax,8)" see arch/x86/kernel/entry_64.S:629
+		* 0xFF Call
+		* 0x14 ModRM: .mod=00 (register indirect addressing), 
+		*		.reg=100 (use sib), .rm=101 (rip relative addressing)
+		* 0xC5 SIB: scale: 11 (2^3), index: 000 (RAX), base: 101 (disp32)
+		*/
+		if(*p == 0xFF && *(p+1) == 0x14 &&  *(p+2) == 0xC5){
+			table = (unsigned int*) (p+3);
+			printk(KERN_INFO "syscall table found at: %p\n", (void*)syscall_tab);
+			return (void **) *table;
+		}
+	}
+	return NULL;
+}
 
-    // system_call (int 0x80) offset and pointer
-    unsigned long _system_call_off;
-    unsigned long *_system_call_ptr;
+/*
+* Interface to retrieve syscall_tab, because I'm too stupid for that now.
+*/
+void ** get_syscall_table(void){
+	if(syscall_tab == NULL)
+		syscall_tab = find_syscall_table();
+	return syscall_tab;
+}
 
-    // temp variables for scan
-    unsigned int i;
-    u64 *off;
-
-    // store IDT register contents directly into memory
-    asm ("sidt %0" : "=m" (idtr));
-
-    // print out location
-    printk("+ IDT is at %08lx\n", idtr.address);
-
-    // set table pointer
-    idt_table = (gate_desc *) idtr.address;
-
-    // set gate_desc for int 0x80
-    system_call_gate = &idt_table[0x80];
-
-    // get int 0x80 handler offset
-    //_system_call_off = (system_call_gate->a & 0xffff) | (system_call_gate->b & 0xffff0000);
-    _system_call_off = gate_offset(*system_call_gate);
-    _system_call_ptr = (unsigned int *) _system_call_off;
-
-    // print out int 0x80 handler
-    printk("+ system_call is at %p\n", _system_call_off);
-    printk("+ syscall_table: %p\n", syscall_table); 
-
-    print_hex_dump(KERN_INFO, "", DUMP_PREFIX_ADDRESS, 32, 2, _system_call_ptr, 128, 1);
-    print_hex_dump(KERN_INFO, "", DUMP_PREFIX_ADDRESS, 32, 2, syscall_table, 128, 1);
-    // scan for known pattern in system_call (int 0x80) handler
-    // pattern is just before sys_call_table address
-    for(i = 0; i < 128; i++) {
-        off = _system_call_ptr + i;
-        if(*(off) == 0xff && *(off+1) == 0x14 && *(off+2) == 0x85) {
-            printk(KERN_INFO "found sys_call_table\n");
-	    _sys_call_table = *(void **)(off+3);
-            break;
-        }
-    }
-
-    // bail out if the scan came up empty
-    if(_sys_call_table == NULL) {
-        printk("- unable to locate sys_call_table\n");
-        return;
-    }
-
-    // print out sys_call_table address
-    printk("+ found sys_call_table at %08p!\n", _sys_call_table);
-
+inline void ** syscall_table(){
+	return get_syscall_table();
 }

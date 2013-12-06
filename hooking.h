@@ -13,10 +13,9 @@ static inline void enable_wp(void){
 	write_cr0(read_cr0() | 0x00010000);
 }
 
-static void ** syscall_table = (void * *) sys_call_table_R;
-static void ** _sys_call_table = NULL;
+inline void ** syscall_table(void); //(void * *) sys_call_table_R;
 
-void find_syscall_table(void);
+extern void ** find_syscall_table(void);
 
 
 #endif

