@@ -6,6 +6,7 @@ rootkit-objs += code_hiding.o
 rootkit-objs += file_hiding.o
 rootkit-objs += privilege_escalation.o
 rootkit-objs += commands.o
+rootkit-objs += hooking.o
 rootkit-objs += mod.o
 
 KERNELBUILD = /lib/modules/$(shell uname -r)/build

