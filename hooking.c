@@ -13,7 +13,7 @@ void ** find_syscall_table() {
 	unsigned char * p;
 
 	unsigned char* limit;
-	unsigned int * table;	
+	unsigned long * table;	
 
 	rdmsrl(MSR_LSTAR, syscall_handler_addr);
 	limit = (unsigned char*) syscall_handler_addr + 128;	
@@ -27,9 +27,8 @@ void ** find_syscall_table() {
 		* 0xC5 SIB: scale: 11 (2^3), index: 000 (RAX), base: 101 (disp32)
 		*/
 		if(*p == 0xFF && *(p+1) == 0x14 &&  *(p+2) == 0xC5){
-			table = (unsigned int*) (p+3);
-			printk(KERN_INFO "syscall table found at: %p\n", (void*)syscall_tab);
-			return (void **) *table;
+			table = (unsigned long*) (p+3);
+			return (void **) ((unsigned long)*table | 0xffffffff00000000);
 		}
 	}
 	return NULL;
