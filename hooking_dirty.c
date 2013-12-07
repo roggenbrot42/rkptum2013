@@ -29,7 +29,7 @@ void ** find_syscall_table(void)
     //unsigned char *limit;
     //int ii,i;
     //unsigned long other_addr;
-    printk("get value %x\n", sys_call_table_R);
+    // printk("get value %x\n", sys_call_table_R);
     //rdmsrl(MSR_LSTAR, other_addr);
 
     //printk("other addr: %x\n", other_addr);
@@ -56,7 +56,7 @@ void ** find_syscall_table(void)
     //     }
     //     p++;
     // }
-    u64 ptr = sys_read;
+    u64 ptr = sys_close;
     u64 i =0;
     u64 *p;
     printk(KERN_INFO "sys close %x\n", ptr);
