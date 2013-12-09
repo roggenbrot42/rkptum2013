@@ -15,7 +15,7 @@ static int __init mod_init(void)
 	if(sct != NULL)
 		printk(KERN_INFO "syscall table:%016lx\n",(long unsigned int) sct);
 	else return 0;
-  hook_read(sct);
+	hook_read(sct);
 
   return 0;
 }
@@ -23,7 +23,7 @@ static int __init mod_init(void)
 static void __exit mod_exit(void)
 {
 	if(sct == NULL) return;
-  unhook_read(sct);
+	unhook_read(sct);
 }
 
 

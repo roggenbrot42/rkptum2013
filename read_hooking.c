@@ -49,7 +49,7 @@ void unhook_read(void ** syscall_table){
 	disable_wp();
 	syscall_table[__NR_read] = orig_sys_read;
 	enable_wp();
-  kfree(buffer);
+	kfree(buffer);
   	while(r_count>0){// hack to unblock read
     		printk(KERN_INFO "\n");
   	}
