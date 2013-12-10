@@ -1,0 +1,47 @@
+Assignment 8: Finding Data Structures
+------------------------------------------------------------------------------------
+Credits
+    Nicolas Appel
+    Wenwen Chen
+------------------------------------------------------------------------------------
+Description
+    - Obtain syscall table adress dynamically
+    - Hook read call and printk stdin
+------------------------------------------------------------------------------------
+Documentation
+------------------------------------------------------------------------------------
+Installation instructions
+    - Compile the module
+      # make
+    - Insert the module
+      # insmod rootkit.ko 
+    - Remove the module
+      # rmmod rootkit    
+----------------------------------------------------------------------------------
+Technical note
+INT 0x80 was replaced by SYSCALL and SYSENTER for 64-bit system calls. These processor
+functions don't directly jump into a function in the IDT but call a handler provided
+by the OS. The handler's address is located in the LSTAR machine special register.
+----------------------------------------------------------------------------------
+Implementation Details
+     - find_syscall_table: This method does all the work:
+	Get the address of the system_call handler using the rdmsrl function (read 
+	machine special register long, indicating a 64-bit address). Scan the memory
+	at the address of the system_call handler for the "call *syscall_table(,%rax,8)"
+	assembly instruction, encoded by the sequence 0xFF 0x14 0xC5. See comment in 
+	hooking.c :	
+		/*
+		* IA64 opcode for: "call *syscall_table(,%rax,8)" see arch/x86/kernel/entry_64.S:629
+		* 0xFF Call
+		* 0x14 ModRM: .mod=00 (register indirect addressing), 
+		*		.reg=100 (use sib), .rm=101 (rip relative addressing)
+		* 0xC5 SIB: scale: 11 (2^3), index: 000 (RAX), base: 101 (disp32)
+		*/
+	The following 32-bit address contains the lower part of the address of the syscall table,
+	which then is or-ed bitwise with 0xffffffff00000000 because the RIP relative addressing
+	omits the first 32-bits of the address.
+     - Read call hooking: see previous readmes.	
+-----------------------------------------------------------------------------------
+Additional Notes
+			To unload the module, all other terminal sessions have to disconnect or write to stdin.
+
