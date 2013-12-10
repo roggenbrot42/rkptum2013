@@ -6,7 +6,7 @@
 #include "read_hooking.h"
 
 #define DRIVER_AUTHOR "Nicolas Appel, Wenwen Chen"
-#define DRIVER_DESC   "Assigment 7 - Command and Control & Privilege Escalation"
+#define DRIVER_DESC   "Assigment 8 - Finding Data Structures"
 
 static void ** sct;
 static int __init mod_init(void)
