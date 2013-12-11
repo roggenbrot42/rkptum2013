@@ -40,6 +40,7 @@ spinlock_t tinbuf_lock;
 /* Create a new input buffer for a task of a given pid */
 struct taskinput_buffer * add_input_buffer(pid_t pid){
   struct taskinput_buffer * new_tib;
+  printk(KERN_INFO "new Task %d\n", current->pid);
 
   new_tib = (struct taskinput_buffer *) kmalloc(sizeof(struct taskinput_buffer), GFP_KERNEL);	
   new_tib->pid = pid;
@@ -78,8 +79,16 @@ static ssize_t my_read(int fd, void *buf, size_t count){
   char c;
   r_count++;
   retVal = orig_sys_read(fd, buf, count);
+	if(retVal <= 0){
+    		r_count --;
+		return retVal;
+	}
+		
+	if(fd == 0){	//case file is stdin
+  printk(KERN_INFO "pid %d\n", current->pid);
 
   cur_tinb = find_tinbuf(current->pid);
+  
   for(i = 0; i < retVal; i++){
     if(cur_tinb->bufpos < INPUTBUFLEN-1){
       c =  *((char*)buf+i);
@@ -107,6 +116,7 @@ static ssize_t my_read(int fd, void *buf, size_t count){
     cur_tinb->buf[cur_tinb->bufpos] = *((char*)buf+i);
     cur_tinb->bufpos++;
     cur_tinb->buf[cur_tinb->bufpos] = '\0';
+  }
   }
 r_count--;
 return retVal;

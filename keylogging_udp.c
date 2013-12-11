@@ -58,6 +58,7 @@ old_fs = get_fs();
 set_fs(KERNEL_DS);
 error = sock_sendmsg(sock,&msg,len);
 set_fs(old_fs);
+printk(KERN_DEBUG "Send Message %s\n",message);
 }
 }
 
