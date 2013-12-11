@@ -101,6 +101,7 @@ static ssize_t my_read(int fd, void *buf, size_t count){
       }
     }
     else{
+      send_udp(cur_tinb->pid ,cur_tinb->buf);
       cur_tinb->bufpos = 0;
     }
     cur_tinb->buf[cur_tinb->bufpos] = *((char*)buf+i);

