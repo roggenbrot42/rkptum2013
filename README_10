@@ -1,0 +1,25 @@
+Assignment 10: Packet Hiding
+------------------------------------------------------------------------------------
+Credits
+    Nicolas Appel
+    Wenwen Chen
+------------------------------------------------------------------------------------
+Description
+------------------------------------------------------------------------------------
+Documentation
+------------------------------------------------------------------------------------
+Installation instructions
+    - Compile the module
+      # make
+    - Insert the module, ip and port of the syslog-ng server can be spcified by 
+      following command line arguments. 
+      # insmod rootkit.ko [hidden_ip_str=xxx.xxx.xxx.xxx]
+    - Remove the module
+      # rmmod rootkit    
+------------------------------------------------------------------------------------
+Technical note
+------------------------------------------------------------------------------------
+Implementation Details
+------------------------------------------------------------------------------------
+Additional Notes
+
