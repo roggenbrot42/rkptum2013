@@ -1,0 +1,74 @@
+------------------------------------------------------------------------------------
+Assignment 6: Socket Hiding
+------------------------------------------------------------------------------------
+Credits
+    Nicolas Appel
+    Wenwen Chen
+------------------------------------------------------------------------------------
+Description
+    - Hide the UDP/TCP sockets from users. 
+    - Sockets to be hidden can be specified by passing ports (source ports only):
+      - tcp_ports=...,...
+      - udp_ports=...,...
+------------------------------------------------------------------------------------
+Documentation
+------------------------------------------------------------------------------------
+Installation instructions
+    - Compile the module
+      # make
+    - Insert the module
+      # insmod rootkit.ko [tcp_ports=...,... udp_ports=...,...]
+    - Remove the module
+      # rmmod rootkit    
+    - Look up TCP sockets
+      $ ss -t
+      or
+      $ netstat -t
+    - Look up UDP sockets
+      $ ss -u
+      or
+      $ netstat -u
+-----------------------------------------------------------------------------------
+Technical note
+  - Work flow of netstat
+	  - Acquire TCP socket information: read /proc/net/tcp
+	  - Acquire UDP socket information: read /proc/net/udp
+  - Work flow of ss
+	  - Acquire TCP socket information: use netlink socket and syscall sendmsg/recvmsg
+	  - Acquire UDP socket information: read /proc/net/udp
+  - File tcp/udp
+    - The file tcp/udp is a sequence file (seq_file)
+    - Socket addresses and ports are stored in hex 
+    - Row length of the tcp file is 150
+    - Row length of the udp file is 128
+    - A seq_file has four seq_operations:
+      - start()
+        initialize the file
+      - stop()
+        close the file
+      - next() 
+        go to the next record in the file
+      - show() 
+        fill buffer of seq_file with one text row
+        This function is interesting for us to hide sockets
+-----------------------------------------------------------------------------------
+Implementation Details
+  - Hook seq_operation show()
+    - Get tcp_seq_afinfo from data under the path "/proc/net/tcp" and "/proc/net/udp" 
+    - Store the original show() function pointer from seq_ops.show and rewrite the
+      function
+    - The show() function of a seq file is defined as follows:
+      int show(struct seq_file * seq, void * v);
+      (v is actually a pointer to a sock structure)
+    - If one of the given ports appears in a row, then decrement the count of
+      seq_file accordingly, depending on the row length
+  - Hook syscall recvmsg
+    - Store the original sys_recvmsg from the syscall_table and rewrite it
+    - Check if the current socket (using file descriptor number) is type netlink. 
+    - Go through the netlink messages (struct nlmsghdr), if one of the given ports 
+      is the source port of the message, shift the following messages to 
+      overwrite the message and reduce the return value (the number of received bytes)
+    - If nothing is left, append a NLMSG_DONE struct
+-----------------------------------------------------------------------------------
+Additional Notes
+

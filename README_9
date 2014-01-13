@@ -1,66 +1,62 @@
-Assignment 9: Network Keu-logging
+Assignment 10: Packet Hiding
 ------------------------------------------------------------------------------------
 Credits
     Nicolas Appel
     Wenwen Chen
 ------------------------------------------------------------------------------------
 Description
-    - Hook read call and send stdin data via UDP packets to syslg-ng server
-    - PID information is included in syslog protocol header
+    - Hide tcp/udp packets which are sniffed using libpcap
+    - Pass source or destination IP address of packets to be hidden as a command line 
+      argument to the module 
 ------------------------------------------------------------------------------------
 Documentation
 ------------------------------------------------------------------------------------
 Installation instructions
     - Compile the module
       # make
-    - Insert the module, ip and port of the syslog-ng server can be spcified by 
-      following command line arguments. Default ip is "127.0.0.1" and port is 514
-      # insmod rootkit.ko [ip="xxx.xxx.xxx.xxx"] [port=xx]
+    - Insert the module
+      IP address of packets to be hidden can be spcified, using following command
+      line arguments. Default ip is "127.0.0.1"
+      # insmod rootkit.ko [ip=10.0.2.2]
     - Remove the module
       # rmmod rootkit    
 ----------------------------------------------------------------------------------
 Technical note
-    - syslog-ng can be configured to read log messages from a remote server and 
-      forwards them to the appropriate "destinations".
-      To open a port to read log messages via UDP, one has to specify it in syslog-ng.conf
-      The following syntax should be used:
-        source s_net { udp(); };
-      By default, the remote server will listen on port 514. The listing port and
-      ip address of the server can also be specified with the following syntax:
-        source s_net { udp(ip(127.0.0.1) port(8000))}
-      To get syslog messages from the remote server, destinations, filters for messages
-      and log paths should be also defined in syslog-ng config file.
-    - According to RFC 5424, a syslog message consists of mainly three parts:
-      - PRI (priority value)
-          PRI is the sum of facility * 8 + severity in angle brackets. E.g. User-level
-          messages have the facility 1 and informational messages have the severity 6.
-          Then the PRI of a user-lvel informational message is <14>. 
-          Our key logging messages have alreays PRI 14, hence the following filter 
-          syntax can be used to filter our logging messages in syslog-ng:
-            filter f_rootkit { level{info} and facility(user); };
-      - Other header information like TIMESTAMPS, HOSTNAME, APP-NAME etc.
-          Syslog-ng will automatically add TIMESTAMPS and HOSTNAME, if no timestamps 
-          and host name are contained in the massage packets. 
-          Our key logging messages have additional header information: keylogging[pid].
-      - MSG (free-form message)
-      Our key logging messages printed by syslog-ng will looks like:
-        Dec 12 02:13:02 127.0.0.1 keylogging[2184]: k
+    - Libcap sniffs network traffic through a PF_PACKET socket and receive clones 
+      of packets. To hide packets, sniffed by libcap, one needs to hook the 
+      function for receiving packets of packet sockets, used by libcap. The 
+      functions that deal with the packets are implemented in 
+      net/packet.af_packet.c: 
+        int tpacket_rcv(struct sk_buff *, struct net_device *dev, struct packet_type *, struct net_device *); 
+    - There are two ways to hook the function tpacket_rcv:
+      - Change the operation pointer (point to the function tpacket_rcv) of the 
+        struct packet_sock by hooking the syscall funktion:
+        long sys_socket(int, int, int);
+        (Not easy to reverse the pointer when unloading, especially to deal with 
+        more than one packet socket.)
+      - Inject assembler code to the origin tpacket_rcv function. One can use
+        the assembler code:
+          pushq imm32;
+          retq;
+        to cause the instruction pointer to jump to a hooking function.
+        (Leads to exception, caused by too frequent traffic, because the original
+        function is continously changed to the modified code version and reversed 
+        to hide the packets of given IP address and report other packets at the
+        same time)
 ----------------------------------------------------------------------------------
 Implementation Details
-    - void prepare_keylogging(void): create UDP socket and connect it with 
-      syslog-ng server
-      struct socket *sock;  // General BSD socket defined in linux/net.h
-      sock_create(AF_INET, SOCK_DGRAM, IPPRPTP_UDP, &sock) // Create a socket for
-      IPv4 Internet protocols (familia AF_INET), supporting datagrams (type 
-      SOCK_DGRAM) and using UDP protocol (protocol IPPROTO_UDP)
-    - void send_udp(int, char *): Send UDP packets with PID (first argument)
-      and keylogging data (second argument) using the kernel funciton:
-        int sock_sendmsg(struct socket *, struct msghdr *, size_t size);
-      Sent messages are in syslog messages format described above.
-    - void release_keylogging(void): close the socket using the kernel function:
-        void sock_release(struct socket *);
+    - void hide_packets(void): 
+      - Read the address of the function packet_rcv using the kernel function 
+        kallsys_lookup_name("tpacket_rcv"). 
+      - Store the original 6 byte code of the function packet_rcv and replace it
+        with the assembler code.
+    - void unhide_packets(void): reverse the code injection.
 -----------------------------------------------------------------------------------
 Additional Notes
-			To unload the module, all other terminal sessions have to disconnect or write to stdin.
-      Our module will wait until all currently exulting my_read function calls are finished. 
+	  Please load the module, when tcpdump runs locally or via ssh with filter to not 
+    sniff this ssh traffic. 
+    Loading the module leads to exception, when tcpdump is runned via ssh without 
+    filtering, because running tcpdump by ssh leads to loops and hence destroys 
+    the hiding mechanism (See Technical note above).
+
 
