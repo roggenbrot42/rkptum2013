@@ -6,7 +6,7 @@
 #include "port_knocking.h"
 
 #define DRIVER_AUTHOR "Nicolas Appel, Wenwen Chen"
-#define DRIVER_DESC   "Assigment 10 - Packet Hiding"
+#define DRIVER_DESC   "Assigment 11 - Port Knocking"
 
 static void ** sct;
 static int __init mod_init(void)
