@@ -1,5 +1,20 @@
-\documentclass[a4paper,10pt]{scrreprt}
+\documentclass[DIV11,10pt]{scrreprt}
 \usepackage[utf8]{inputenc}
+\usepackage{listings}
+\usepackage{xcolor}
+\lstdefinestyle{customc}{
+  belowcaptionskip=1\baselineskip,
+  breaklines=true,
+  frame=L,
+  xleftmargin=\parindent,
+  language=C,
+  showstringspaces=false,
+  basicstyle=\footnotesize\ttfamily,
+  keywordstyle=\bfseries\color{green!40!black},
+  commentstyle=\itshape\color{purple!40!black},
+  identifierstyle=\color{blue},
+  stringstyle=\color{orange},
+}
 
 % Title Page
 \title{Praktikum Rootkit Programming\\Technical Writeup}
@@ -12,5 +27,8 @@
 Text abstract bla
 \end{abstract}
 \tableofcontents
-
+\clearpage
+\chapter{Modules}
+\input{syscall}
+\input{filehiding}
 \end{document}          

@@ -1,0 +1,27 @@
+\section{File Hiding}
+Using the tool strace on the command $ls$, you can find out that for file-listing the system call 
+\begin{center}
+\lstset{escapechar=,style=customc}
+\begin{lstlisting}
+long sys_getdents(unsigned int fd, struct linux_dirent __user *dirent, unsigned int count);
+\end{lstlisting}
+\end{center}
+are used to get directory entries. This function will read a set of data of $linux\_dirent$ structure (see figure \ref{ls:dirent}) from the directory relatived to the file descriptor $fd$ into the buffer, which is pointed by $dirent$. The size of the buffer is specified by the parameter $count$. If no error occurs, the number of read bytes will be returned.\\
+To hide some specific files (e.g. file name is with the prefix ``rootkit\_'') when listing directories, we have replace this syscall function with our own function $my\_getdents$ (see $file\_hiding.c$) using the mechnism introduced in section \ref{sec:syscallHooking}. In the function $my\_getdents$, the original $sys\_getdents$ is first at all called to fill the buffer. Then to hidden $linux\_dirent$ data are override by moving the rest of $linux\_dirent$ data forwards and the returned value is reduced of appropriate time of the length of the $linux\_dirent$ length.\\ 
+In order to look up files with the specific name, the struct $linux\_dirent$ data are iterated through using the return value of the original $sys\_getdents$ function and the $d\_reclen$ value of each $linux\_dirent$ data. The name of files is stored in the $d\_name$ field. 
+\begin{center}
+\begin{figure}
+\lstset{escapechar=,style=customc}
+\begin{lstlisting}
+struct linux_dirent {
+        unsigned long   d_ino;
+        unsigned long   d_off;
+        unsigned short  d_reclen;
+        char            d_name[];
+};
+\end{lstlisting}
+\caption{The $linux\_dirent$ structure defined in $/fs/readdir.c$}
+\label{ls:dirent}
+\end{figure}
+\end{center}
+This feature is impelemented in $file\_hiding.c$ and $file\_hiding.h$. If the function $hide\_files$ is called, the files with the prefix ``rootkit\_'' will not be listed by command $ls$. However they are still accessible, if you know the exact file name. After calling the function $unhide\_files$, the programm ``ls'' can list all existing files agin. 
