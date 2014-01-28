@@ -1,12 +1,36 @@
-\documentclass[a4paper,10pt]{scrartcl}
+\documentclass[DIV11,10pt]{scrreprt}
 \usepackage[utf8]{inputenc}
+\usepackage{listings}
+\usepackage{xcolor}
+\lstdefinestyle{customc}{
+  belowcaptionskip=1\baselineskip,
+  breaklines=true,
+  frame=L,
+  xleftmargin=\parindent,
+  language=C,
+  showstringspaces=false,
+  basicstyle=\footnotesize\ttfamily,
+  keywordstyle=\bfseries\color{green!40!black},
+  commentstyle=\itshape\color{purple!40!black},
+  identifierstyle=\color{blue},
+  stringstyle=\color{orange},
+}
 
 % Title Page
 \title{Praktikum Rootkit Programming\\Technical Writeup}
 \author{Nicolas Appel, Wenwen Chen (Group 2)}
 \begin{document}
 \maketitle
+\begin{abstract}
+Text abstract bla
+\end{abstract}
+\tableofcontents
+\clearpage
 \input{intro}
-\input{proc}
+\chapter{Modules}
+\input{syscall}
+\input{filehiding}
+% FIXME compiliert nicht
+%\input{proc}
 \input{port}
 \end{document}          
