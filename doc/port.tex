@@ -1,0 +1,9 @@
+\section{Port knocking prevention}
+The idea behind the implemented port knocking prevention is to simulate a 
+situation in which the hidden port is not opened by a listening service.
+Every IPv4 TCP packet is handled by the \textit{tcp_v4_rcv()} function. This 
+function uses the \textit{__inet_lookup_skb()} function to resolve the socket 
+corresponding to the port number in the packet header. 
+To do so, the kernel module hijacks the \textit{__inet_lookup_listener} 
+%%TODO: explain how
+function that obtains the listening socket for a given port number.
