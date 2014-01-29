@@ -1,4 +1,4 @@
-\documentclass[DIV11,10pt]{report}
+\documentclass[10pt]{report}
 \usepackage[utf8]{inputenc}
 \usepackage{listings}
 \usepackage{xcolor}
@@ -17,18 +17,23 @@
 }
 
 \setcounter{chapter}{1}
+\setcounter{section}{-1}
 
 % Title Page
 \title{Praktikum Rootkit Programming\\Technical Writeup}
 \author{Nicolas Appel, Wenwen Chen (Group 2)}
 \begin{document}
 \maketitle
+\clearpage
 \tableofcontents
 \clearpage
 \input{intro}
 \input{syscall}
+\input{finding}
 \input{filehiding}
 \input{comm}
+\input{code}
+\input{privilege}
 \input{proc}
 \input{port}
 \end{document}          

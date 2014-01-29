@@ -22,6 +22,6 @@ implementation is in \texttt{hooking.h}.\\
 To see which system calls a program used, you can use a debugging tool called 
 strace. Then you can try to change the kernel service by hooking any syscall 
 functions with the mechanism introduced above. You need store the origin syscall 
-function pointer, so dass it is possible to recovery the kernel service by 
+function pointer, so that it is possible to recovery the kernel service by 
 unloading your rootkit module. 
 

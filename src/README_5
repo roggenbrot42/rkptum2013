@@ -44,8 +44,8 @@ Module hiding:
 	It hides the module by patching the file operations of the /sys/module
 	folder and by removing it from the linked module list.
 	Hiding /sys/module/rootkit/ leaves the functionality of lsmod untouched
-	since it uses /dev/modules as its source. Removing the module from the list
-	also removes it from /dev/modules. 
+	since it uses /proc/modules as its source. Removing the module from the list
+	also removes it from /proc/modules. 
 -----------------------------------------------------------------------------------
 Additional Notes
 It is possible to actually remove the sysfs directory, although this lead to a 

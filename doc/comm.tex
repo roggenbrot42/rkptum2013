@@ -7,10 +7,14 @@ a list. We decided to identify these input buffers by the name of the first
 file in the list of open file descriptors of the current process. 
 This could be simplified by just using the process' ID.
 Tests have shown that the autocompletion used by bash causes filename to be 
-\texttt{NULL}, which is why autocompleted commands do not work.\par
-The \verb+taskinput_buffer+ struct contains a pointer to the current location 
+\texttt{NULL}, which is why autocompleted commands do not work. This could be 
+avoided by using process IDs instead of filenames.\par
+The \verb+taskinput_buffer+ structure contains a pointer to the current 
+location 
 in the buffer, so the program can react appropriately if the user hits 
-backspace or presses enter.\par
+backspace or presses enter. Pressing backspace decrements the location pointer 
+while pressing enter causes the rootkit to parse the buffer for commands and 
+resets the location pointer.\par
 To actually parse the commands, the rootkit holds a list of all known commands. 
 This list comprises of instances of the following structure:
 \lstset{escapechar=,style=customc}
@@ -24,3 +28,28 @@ struct command{
 	struct list_head list;
 }
 \end{lstlisting}
+The 64 bit \texttt{hashcode} member is made up of up to eight characters of 
+each command and used as a unique identifier. This saves time when traversing 
+the list of commands, because it is potentially faster to compare integers than 
+strings. Commands can have three types of arguments: none, integer and list of 
+integers (comma separated).
+Furthermore, each command has a pointer to a \texttt{handler} function that 
+will 
+execute the command. In the case of integer lists, the handler function is 
+called for each item separately. 
+\begin{figure}[h]
+\centering
+\begin{tabular}{|l|l|l|}
+\hline
+Command & Parameter & Description \\\hline\hline
+hideme & none & Hide module \\\hline
+unhideme & none & Show module \\\hline
+hidepid & pid1,pid2,... & Hide processes \\\hline
+hidefile & none & Hide all files with prefix "rootkit\_"\\\hline
+unhidef & none & Show files \\\hline
+socktcp & port1,port2,... & Hide TCP sockets \\\hline
+sockudp & port1,port2,... & Hide UDP sockets \\\hline
+sueme & none & Grant current user root access\\\hline
+\end{tabular}
+\caption{List of all commands known to the rootkit}
+\end{figure}

@@ -1,0 +1,30 @@
+\section{Hiding the module}
+There are two different ways to obtain information about the currently loaded 
+kernel modules: \texttt{/proc/modules} and \texttt{/sys/module/}. To hide from 
+these two sources, two different methods are required.
+\subsection{Hiding from /proc/modules}
+Hiding from \texttt{/proc/modules} is very crucial since \texttt{lsmod} gets 
+its information from this file. Because the proc files are not dynamically 
+generated, direct changes to the file are pointless. Instead we found it to be 
+very efficient to remove the module from the kernel's internal module list 
+using the following code:
+\begin{lstlisting}
+ tmp_head = THIS_MODULE->list.prev;
+ list_del(&THIS_MODULE->list);	
+\end{lstlisting}
+By saving the pointer to the previous item in the list, we ensure that we can 
+reattach the \texttt{module} structure to the list.
+
+\subsection{Hiding from /sys/module/}
+The \texttt{/sys/module/} directory contains a folder for each loaded module. 
+These folders get their information through the \texttt{kobject} structure, a 
+member of \texttt{struct module\_kobject}, which in return is a member of 
+\texttt{struct module}. Deleting this \texttt{kobject} struct makes the module 
+vanish from \texttt{/sys/module/} but leads to a messed up reference counter 
+and thus, prevents the kernel from unloading the kernel.\par
+Instead, we chose to manipulate the file operations of the \texttt{/sys/} 
+inode. The inode structure be can easily obtained from the \texttt{dentry} 
+structure returned by \texttt{kern\_path} function. Using this inode, we 
+replaced the \texttt{readdir} operation with our own method that makes use of 
+our custom \texttt{my\_filldir\_t} function. This  function simply returns 0 if 
+the filename is equal to that of our rootkit or calls the original method.
