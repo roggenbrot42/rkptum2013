@@ -65,7 +65,6 @@ Implementation Details
   - Hook syscall recvmsg
     - Store the original sys_recvmsg from the syscall_table and rewrite it
     - Check if the current socket (using file descriptor number) is type netlink. 
-<<<<<<< HEAD
     - Go through the netlink messages (struct nlmsghdr), if one of the given ports 
       is the source port of the message, shift the following messages to 
       overwrite the message and reduce the return value (the number of received bytes)

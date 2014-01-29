@@ -1,0 +1,41 @@
+\section{Port knocking prevention}
+The idea behind the implemented port knocking prevention is to only allow a 
+certain
+IP address to connect to a service's port and conceal its existence to other 
+potential clients such as port scanners. 
+This means that any incoming SYN packets sent by a forbidden client will be 
+answered with a RST packet. To achieve this,
+two methods come to mind:
+\begin{enumerate}
+ \item Check all outgoing TCP packets' source port and destination address, set 
+RST flag accordingly
+ \item Intercept all socket lookups and check if port and address are allowed, 
+fake negative results if not.
+\end{enumerate}
+To implement method 1, it is sufficient to hijack the 
+\verb+tcp_transmit_skb()+ function in ~\verb+net/ipv4/tcp_output.c+ and alter 
+the TCP flags found in the \verb+struct sk_buff+
+parameter to RST. Although this method successfully prevents any undesired 
+connections, tests showed that the kernel sends a SYN/ACK
+packet to the client nevertheless. This causes a ``connection closed 
+unexpectedly'' error or similar on the client side rather than a
+``connection refused''. Furthermore, the server's internal TCP state machine is 
+confused by this and retransmits the manipulated packet
+multiple times. Therefore, this approach is clearly unsuitable for a rootkit. 
+\par
+This is why method 2 was chosen for the rootkit. It intervenes with the 
+connection handling process directly when a packet arrives at transport layer.
+In the Linux kernel, every IPv4 TCP packet is handled by the 
+\texttt{tcp\_v4\_rcv()} function. This 
+function uses the \texttt{\_\_inet\_lookup\_skb()} function to resolve the 
+socket 
+corresponding to the port number in the packet header. The rootkit hijacks this 
+function call and
+redirects it to our own method that checks IP and port number against the values 
+provided in the rootkit's parameters. If the client IP
+is not allowed, it simply returns a zero value or else calls the original 
+lookup 
+function.
+However, method still is far from perfection since it can still be circumvented 
+by spoofing an accepted IP address obtained by external packet monitoring 
+software.

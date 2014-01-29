@@ -1,0 +1,20 @@
+\section{Finding the syscall table at runtime}
+Using predefined adresses limits the rootkit to the machine it was 
+built on. This of course is rarely useful, so this rootkit comes with a 
+mechanism to find the syscall table at runtime. \par
+The interrupt \texttt{int 0x80} for performing system calls was replaced by 
+\texttt{SYSCALL} and \texttt{SYSENTER} for 64-bit system calls. These processor 
+functions don't directly jump into a function in the \texttt{IDT} but call a 
+handler provided by the OS. The handler's address is located in the 
+\texttt{LSTAR} machine specific register. To get to the the syscall table 
+nevertheless, we get the address of the system call handler using the 
+\texttt{rdmsrl} function (read 
+machine specific register long, indicating a 64-bit address). The source code 
+of the handler function is found at \texttt{arch/x86/kernel/entry.S:629}. It 
+calls the system calls with the following instruction: 
+\verb+call *syscall_table(,%rax,8)+. Using an opcode table, we were able to 
+assemble this instruction to the sequence \texttt{0xFF 0x14 0xC5}. The following 
+32-bit address contains the lower part of the address of the syscall table,
+which then is or-ed bitwise with 0xffffffff00000000 because the RIP 
+relative addressing omits the first 32 bits of the address. This address now 
+contains the full 64 bit address of the syscall table and is ready to use.

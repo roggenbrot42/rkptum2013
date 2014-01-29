@@ -1,0 +1,49 @@
+\section{File Hiding}
+Using the tool strace on the command \texttt{ls}, you can find out that for 
+file-listing the system call 
+\begin{center}
+\lstset{escapechar=,style=customc}
+\begin{lstlisting}
+long sys_getdents(unsigned int fd, struct linux_dirent __user *dirent, unsigned 
+int count);
+\end{lstlisting}
+\end{center}
+are used to get directory entries. This function will read a set of data of 
+\verb+linux_dirent+ structure (see figure \ref{ls:dirent}) from the directory 
+relative to the file descriptor \texttt{fd} into the buffer, which is pointed 
+by \texttt{dirent}. The size of the buffer is specified by the parameter 
+\texttt{count}. If no error occurs, the number of read bytes will be returned.\\
+To hide some specific files (e.g. file name is with the prefix ``rootkit\_'') 
+when listing directories, we have replace this syscall function with our own 
+function \texttt{my\_getdents} (see \texttt{file\_hiding.c}) using the mechanism 
+introduced in section \ref{sec:syscallHooking}. In the function 
+\texttt{my\_getdents}, the original \texttt{sys\_getdents} is first at all 
+called to fill the buffer. Then to hidden \texttt{linux\_dirent} data are 
+override by moving the rest of \texttt{linux\_dirent} data forwards and the 
+returned value is reduced of appropriate time of the length of the 
+\texttt{linux\_dirent} length.\\ 
+In order to look up files with the specific name, the struct 
+\texttt{linux\_dirent} data are iterated through using the return value of the 
+original \texttt{sys\_getdents} function and the $d\_reclen$ value of each 
+\texttt{linux\_dirent} data. The name of files is stored in the \texttt{d\_name} 
+field. 
+\begin{center}
+\begin{figure}[h]
+\lstset{escapechar=,style=customc}
+\begin{lstlisting}
+struct linux_dirent {
+        unsigned long   d_ino;
+        unsigned long   d_off;
+        unsigned short  d_reclen;
+        char            d_name[];
+};
+\end{lstlisting}
+\caption{The \texttt{linux\_dirent} structure defined in \texttt{/fs/readdir.c}}
+\label{ls:dirent}
+\end{figure}
+\end{center}
+This feature is implemented in \texttt{file\_hiding.c} and \texttt{file\_hiding.h}. If the 
+function \texttt{hide\_files} is called, the files with the prefix ``rootkit\_'' will 
+not be listed by command \texttt{ls}. However they are still accessible, if you know 
+the exact file name. After calling the function \texttt{unhide\_files}, the program 
+``ls'' can list all existing files again. 

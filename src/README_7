@@ -1,0 +1,76 @@
+Assignment 7: Command and Control & Privilege Escalation 
+------------------------------------------------------------------------------------
+Credits
+    Nicolas Appel
+    Wenwen Chen
+------------------------------------------------------------------------------------
+Description
+    - File hiding, process hiding, module hiding, and socket hiding controlled by 
+      self-defined commands
+    - Escalates the current privileges to root by manipulating the current shell 
+------------------------------------------------------------------------------------
+Documentation
+------------------------------------------------------------------------------------
+Installation instructions
+    - Compile the module
+      # make
+    - Insert the module
+      # insmod rootkit.ko 
+    - Remove the module
+      # rmmod rootkit    
+    - Hide module
+      # hideme
+    - Show module
+      # unhideme
+    - Hide processes
+      # hidepid pid1,pid2,...
+    - Hide files with the prefix "rootkit_"
+      # hidefile
+    - Show hidden files
+      # unhidef
+    - Hide tcp sockets
+      # socktcp port1,port2,...
+    - Hide udp sockets
+      # sockudp port1,port2,...
+    - TODO Show hidden sockets
+    - Privilege Escalation
+      # sueme
+-----------------------------------------------------------------------------------
+Technical note
+  - Every process in linux has two sets of credentials, task -> real_cred points
+    real subjective task credentials and task -> cred points effective subjective 
+    task credentials. Both are const, not modifyable. The following 4 functions are 
+    provided to modify the credentials of a process:
+      - struct cred *prepare_creds(void); 
+        Create a new set of credentials, which is a copy of the current credentials 
+        but modifyable.
+      - const struct cred *override_creds(const struct cred *);
+        Override the current process's subjective credentials (task -> cred) temporarily
+      - void revert_creds(const struct cred *);
+        Revert a temporary subjective credentials override
+      - int commit_creds(struct cred *); 
+        Install a new set of credentials to the current process
+-----------------------------------------------------------------------------------
+Implementation Details
+  - Privilege Escalation
+    - prepare_creds() creates a new set of credentials, which is modifyable.
+    - change real uid, real gid, effective uid, effective gid, uid for VFS operations
+      and gid for VFS operations to root id
+    - commit_creds() installs new credentials upon the current task
+  - Command reading: See the README of the last assignment
+  - Command parsing:
+    All input with max. 8 characters is copied into a 64bit integer variable. This is to
+    improve the performance when finding the the command in the command list and also the
+    reason why commands mustn't be longer than 8 chars. All commands are stored in a
+    'command' struct, that contains its name, length of the name, the 'hashcode' (the 64bit 
+    number), an indicator for the type of argument, a void pointer to the function that 
+    shall be invoked and the list structure. It would have been more elegant to store the 
+    name and the 'hashcode' in a union, but that would still require a way to convert the 
+    input.
+    Currently, 3 types of arguments are supported: NOARG (no arguments), INTARG (single int),
+    INTLST (comma separated list of ints). The format is: command argument(, argument2)*
+    
+-----------------------------------------------------------------------------------
+Additional Notes
+	To unload the module, all other terminal sessions have to disconnect or write to stdin.
+

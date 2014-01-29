@@ -1,0 +1,5 @@
+\section{Process Hiding}
+Get /proc/ root inode and replace its readdir operation by the rootkit's own
+"proc\_readdir". This function simply replaces the provided filldir function 
+by a filldir function that filters out the directories of all given (see 
+above) PIDs. 

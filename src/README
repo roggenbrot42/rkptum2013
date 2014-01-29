@@ -1,0 +1,66 @@
+Assignment 11: Port knocking
+------------------------------------------------------------------------------------
+Credits
+    Nicolas Appel
+    Wenwen Chen
+------------------------------------------------------------------------------------
+Description
+    - Hide service on a specific port, which can be passed as a command line
+      argument to the module
+    - Allow packets from a specific source IP address, which can be passed as a 
+      command line argument to the module 
+------------------------------------------------------------------------------------
+Documentation
+------------------------------------------------------------------------------------
+Installation instructions
+    - Compile the module
+      # make
+    - Insert the module
+      Hidden port and the source IP address of allowed packets can be specified, 
+      using the following command line arguments. Default allowed_ip_str is "127.0.0.1"
+      and hidden_port is 8000
+      # insmod rootkit.ko [allowed_ip_str=xxx.xxx.xxx.xxx hidden_port=xxxx]
+    - Remove the module
+      # rmmod rootkit    
+----------------------------------------------------------------------------------
+Technical note - Network stack
+    - Network layer - IP
+        Net device receives packets using the function ip_rcv()
+        - discard ip header and defragment the packet if necessary ->
+        - pass it through netfilter hook ->
+        ip_rcv_finish()
+        - look up route to destination of the packet ->
+        des_input()
+        - if to be delivered locally ->
+        ip_local_deliver()
+        - find protocol according to the protocol identifier number ->
+        call packet handler of the appropriate protocol: 
+          static const struct net_protocol tcp_protocol = {
+              .early_demux    =       tcp_v4_early_demux,
+              .handler        =       tcp_v4_rcv,
+              .err_handler    =       tcp_v4_err,
+              .no_policy      =       1,
+              .netns_ok       =       1,
+          }; 
+    - Transport layer
+      - When the received packet is an ipv4 tcp packet, tcp_v4_rcv() will be called
+        to look up socket according to destination port (__inet_lookup_skb()). 
+        If no socket can be found, tcp_v4_send_reset() will be called to send
+        RST message back.
+----------------------------------------------------------------------------------
+Implementation Details
+    - Idea: 
+        Hook the functions at the transport layer to drop not expected packets and
+        send a RST message (for tcp packets), before these packets arrive at the 
+	corresponding sockets.
+    - void no_knock(void): 
+      - Read the address of the functions to be hooked using the kernel function 
+        kallsys_lookup_name() and sysmap.h. 
+      - Store the original 6 byte code of the function __inet_lookup_listener()
+        and replace it with the following assembler code to let 
+        the instruction pointer jump to our hacked functions:
+          pushq imm32;  
+          retq;
+    - void come_in(void): reverse the code injection.
+-----------------------------------------------------------------------------------
+Additional Notes
