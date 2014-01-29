@@ -1,16 +1,17 @@
 \section{File Hiding}
-Using the tool strace on the command $ls$, we have found out that for file-listing the system call 
+Using the tool strace on the command \texttt{ls}, we have found out that for file-listing the system call 
 \begin{center}
 \lstset{escapechar=,style=customc}
 \begin{lstlisting}
-long sys_getdents(unsigned int fd, struct linux_dirent __user *dirent, unsigned int count);
+long sys_getdents(unsigned int fd, struct linux_dirent __user *dirent, unsigned 
+int count);
 \end{lstlisting}
 \end{center}
-is used to get directory entries. This function will read a set of data of the $linux\_dirent$ structure (see figure \ref{ls:dirent}) from the directory referenced by the file descriptor $fd$ into the buffer, which is pointed to $dirent$. The size of the buffer is specified by the parameter $count$. If no error occurs, the number of read bytes will be returned.\\
-To hide some specific files (e.g. file name is is prefixed with ``rootkit\_'') when listing directories, we have replaced this syscall function with our own function $my\_getdents$ (see $file\_hiding.c$) using the mechanism introduced in section \ref{sec:syscallHooking}. In the function $my\_getdents$, first the original $sys\_getdents$ is called to fill the buffer. Then to be hidden $linux\_dirent$ data is overwritten by moving the rest of $linux\_dirent$ data forward. The returned value is reduced by the appropriate multiple of the length of the structure $linux\_dirent$.\\ 
-In order to look up files with the specific name, the data of the structure $linux\_dirent$ is iterated using the return value of the original $sys\_getdents$ function and the $d\_reclen$ value of each $linux\_dirent$ data. The name of files is stored in the $d\_name$ field. 
+is used to get directory entries. This function will read a set of data of the \verb+linux_dirent+ structure (see figure \ref{ls:dirent}) from the directory referenced by the file descriptor \texttt{fd} into the buffer, which is pointed to \texttt{dirent}. The size of the buffer is specified by the parameter \texttt{count}. If no error occurs, the number of read bytes will be returned.\\
+To hide some specific files (e.g. file name is is prefixed with ``rootkit\_'') when listing directories, we have replaced this syscall function with our own function \verb+my\_getdents+ (see \verb+file\_hiding.c+) using the mechanism introduced in section \ref{sec:syscallHooking}. In the function \verb+my\_getdents+, first the original \verb+sys\_getdents+ is called to fill the buffer. Then to be hidden \verb+linux\_dirent+ data is overwritten by moving the rest of \verb+linux\_dirent+ data forward. The returned value is reduced by the appropriate multiple of the length of the structure \verb+linux\_dirent+.\\ 
+In order to look up files with the specific name, the data of the structure \verb+linux\_dirent+ is iterated using the return value of the original \verb+sys\_getdents+ function and the \verb+d\_reclen+ value of each \verb+linux\_dirent+ data. The name of files is stored in the \verb+d\_name+ field. 
 \begin{center}
-\begin{figure}
+\begin{figure}[h]
 \lstset{escapechar=,style=customc}
 \begin{lstlisting}
 struct linux_dirent {
@@ -20,8 +21,8 @@ struct linux_dirent {
         char            d_name[];		/* Filename (null-terminated) */
 };
 \end{lstlisting}
-\caption{The $linux\_dirent$ structure defined in $/fs/readdir.c$}
+\caption{The \texttt{linux\_dirent} structure defined in \texttt{/fs/readdir.c}}
 \label{ls:dirent}
 \end{figure}
 \end{center}
-This feature is implemented in $file\_hiding.c$ and $file\_hiding.h$. If the function $hide\_files$ is called, the files with the prefix ``rootkit\_'' will not be listed, when the command $ls$ is used. However they still are accessible, if you know the exact file name. After calling the function $unhide\_files$, the program ``ls'' can list all existing files again. 
+This feature is implemented in \verb+file\_hiding.c+ and \verb+file\_hiding.h+. If the function \verb+hide\_files+ is called, the files with the prefix ``rootkit\_'' will not be listed, when the command \texttt{ls} is used. However they still are accessible, if you know the exact file name. After calling the function \verb+unhide\_files+, the program ``ls'' can list all existing files again. 
