@@ -1,0 +1,35 @@
+\section{Socket Hiding}
+Linux uses socket for inter-process communication. There are two standard tools for Linux to dump the socket statistics and connection information: $netstat$ and $ss$. In order to hide sockets from the user space, it is neccessary to have a look at, how these tools acquire the socket information. \\
+$/proc$ is a virtual filesystem of linux, which contains system runtime information like general network information. For example, the active TCP connections for ip v4 are listed the virtual file under the path $/proc/net/tcp$. For UDP connections, it is under the path $/proc/net/udp$.\\
+Such virtual files are also called sequence files. The handler of sequence files are defined as a structure called $seq\_operations$ (see figure \ref{ls:op}). $netstat$ calls the $show$ function to print TCP and UDP connections. Hence, we have tried to hook the $show$ function.\\
+Using the function $list\_for\_each\_entry$, we have iterated over the network namespace to get the $proc\_dir\_entry$ (defined in $/fs/proc/internal.h$) for the TCP and UDP sequence files. The data structure of the TCP sequence file is $tcp\_seq\_afinfo$ (defined in $/net/tcp.h$). For the UDP sequence file it is $udp\_seq\_afinfo$ (defined in $/net/udp.h$). The both structures can be got from the $data$ field of the $list\_for\_each\_entry$ structure. Now, we can replace the $show$ operation of the both sequence files with our own functions. The parameter $v$ of the function $show$ of the both structures is either a pointer to the $SEQ\_START\_TOKEN$ (defined in $/linux/seq\_file.h$) or a pointer to a $sock$ structure (defined in $/net/sock.h$). If $v$ points to a $sock$ structure and the source port of the socket is specified by passing the command line parameter of the module, then do nothing and return 0, otherwise, the stored original $show$ function will be called.
+\begin{center}
+\begin{figure}
+\lstset{escapechar=,style=customc}
+\begin{lstlisting}
+struct seq_operations {
+		/* Initialization a seq_file */		
+		void * (*start) (struct seq_file *m, loff_t *pos);
+		/* Close the seq_file */
+		void (*stop) (struct seq_file *m, void *v);
+		/* Go to the next record in the seq_file */
+		void * (*next) (struct seq_file *m, void *v, loff_t *pos);
+		/* Fill the buffer of the seq_file with a text row */
+		int (*show) (struct seq_file *m, void *v);
+};
+\end{lstlisting}
+\caption{The $seq\_operations$ structure defined in $/linux/seq\_file.h$}
+\label{ls:op}
+\end{figure}
+\end{center}
+After that, $ss$ will not print the connections with the specified TCP/UDP source ports any more. But mit $ss$ the current TCP connections can be found out yet, because $ss$ uses another mechanism to acquire TCP socket information: using the syscall funtion 
+\begin{center}
+\lstset{escapechar=,style=customc}
+\begin{lstlisting}
+asmlinkage long sys_recvmsg(int fd, struct msghdr __user *msg, unsigned flags);
+\end{lstlisting}
+\end{center}
+to gather TCP connection information from a netlink socket. Netlink is a socket family for inter-process communication between user space and the kernel.\\
+Using the in section \ref{sec:syscallHooking} introduced mechanism, we have rewritten the function $recvmsg$. The kernel provides the function $sockfd\_lookup$ (defined in $/net/socket.c$) to find the socket structure with the given file descriptor number (parameter $fd$). If it is a netlink socket, go through the netlink messages (read from $msg->msg\_iov->iov\_base$, netlink message header structure, type $struct \; nlmsghdr$ (defined in $/uapi/linux/netlink.h$)). When one of the specified ports is the source port of the message, shift the following messages to overwrite the message and reduce the return value (the number of received bytes). If nothing is left (all tcp sockets should be hidden), the type of the netlink message header structure ( $nlmsghdr$) should be change to $NLMSG\_DONE$. \\
+Now, $ss$ can not print any information about TCP sockets on the localhost of the specified ports. The implementation can be found in $socket\_hiding.c$ and $socket\_hiding.h$\\
+
