@@ -1,8 +1,27 @@
 \section{System Call Hooking}
 \label{sec:syscallHooking}
-A system call is a manner to request a service from the kernel in the user space. It provides an essential interface between user space processes and the operating system.\\
-In Linux, all the syscall functions are declared in $linux/syscalls.h$. The address to these functions are store in an array called $sys\_call\_table$. 
-A simple way to hook the provided services from the kernel is to replace the appropriate localtion in $sys\_call\_table$. The address of the $sys\_call\_table$ can be found in the system map file ($/boot/System.map-\$(uname -r)$), which is a symbol table used by the linux kernel. But the type of the symbol $sys\_call\_table$ is read-only data (R). That means, we should remove the write protection mechinism before system call hooking.\\
-On x86-64 microprocessors, there are a serie of control register to control the general CPU behavior. The $CR0$ register stores 64 bits control flags for basic operations. The bit 16 (WP) determines, whether the CPU can write to read-only marked data. Hence, in order to disable the write protection, we need just write 1 to the 16th bit in the CR0 register using the kernel function $read\_cr0$ and $write\_cr0$ (defined in $asm/paravirt.h$). The implementation is in $hooking.h$.\\
-To see which system calls a program used, you can use a debuffing tool called strace. Then you can try to change the kernel service by hooking any syscall functions with the mechnism introduced above. You need store the origin syscall function pointer, so dass it is possible to recovery the kernel service by unloading your rootkit module. 
+A system call is a manner to request a service from the kernel in the user 
+space. It provides an essential interface between user space processes and the 
+operating system.\\
+In Linux, all the syscall functions are declared in \verb+linux/syscalls.h+. The 
+address to these functions are store in an array called \verb+sys_call_table+. 
+A simple way to hook the provided services from the kernel is to replace the 
+appropriate location in \verb+sys_call_table+. The address of the 
+\verb+sys_call_table+ can be found in the system map file 
+(\verb+/boot/System.map-\$(uname -r)+), which is a symbol table used by the 
+Linux kernel. But the type of the symbol \verb+sys_call_table+ is read-only data 
+(R). That means, we should remove the write protection mechanism before system 
+call hooking.\\
+On x86-64 microprocessors, there are a series of control register to control the 
+general CPU behavior. The \texttt{CR0} register stores 64 bits control flags for 
+basic operations. The bit 16 (WP) determines, whether the CPU can write to 
+read-only marked data. Hence, in order to disable the write protection, we need 
+just write 1 to the 16th bit in the CR0 register using the kernel function 
+\verb+read_cr0+ and \verb+write_cr0+ (defined in \verb+asm/paravirt.h+). The 
+implementation is in \texttt{hooking.h}.\\
+To see which system calls a program used, you can use a debugging tool called 
+strace. Then you can try to change the kernel service by hooking any syscall 
+functions with the mechanism introduced above. You need store the origin syscall 
+function pointer, so dass it is possible to recovery the kernel service by 
+unloading your rootkit module. 
 
