@@ -1,4 +1,4 @@
-\documentclass[DIV11,10pt]{scrreprt}
+\documentclass[DIV11,10pt]{report}
 \usepackage[utf8]{inputenc}
 \usepackage{listings}
 \usepackage{xcolor}
@@ -16,21 +16,20 @@
   stringstyle=\color{orange},
 }
 
+\setcounter{chapter}{1}
+
 % Title Page
 \title{Praktikum Rootkit Programming\\Technical Writeup}
 \author{Nicolas Appel, Wenwen Chen (Group 2)}
 \begin{document}
 \maketitle
-\begin{abstract}
-Text abstract bla
-\end{abstract}
 \tableofcontents
 \clearpage
 \input{intro}
-\chapter{Modules}
 \input{syscall}
 \input{filehiding}
 % FIXME compiliert nicht
-%\input{proc}
+\input{comm}
+\input{proc}
 \input{port}
 \end{document}          
