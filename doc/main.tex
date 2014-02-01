@@ -2,6 +2,7 @@
 \usepackage[a4paper]{geometry}
 \usepackage[utf8]{inputenc}
 \usepackage{listings}
+\usepackage{graphicx}
 \usepackage{xcolor}
 \lstdefinestyle{customc}{
   belowcaptionskip=1\baselineskip,
@@ -17,6 +18,18 @@
   stringstyle=\color{orange},
 }
 
+\lstdefinestyle{customasm}{
+  belowcaptionskip=1\baselineskip,
+  frame=L,
+  xleftmargin=\parindent,
+  language=[x86masm]Assembler,
+  basicstyle=\footnotesize\ttfamily,
+  morekeywords={pushq,retq,\%,rax},
+  keywordstyle=\bfseries\color{green!40!black},
+  commentstyle=\itshape\color{purple!40!black},
+}
+
+
 \setcounter{chapter}{1}
 \setcounter{section}{-1}
 
@@ -30,6 +43,7 @@
 \clearpage
 \input{intro}
 \input{syscall}
+\input{hijack}
 \input{finding}
 \input{filehiding}
 \input{sockethiding}

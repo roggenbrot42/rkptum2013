@@ -15,6 +15,6 @@ calls the system calls with the following instruction:
 \verb+call *syscall_table(,%rax,8)+. Using an opcode table, we were able to 
 assemble this instruction to the sequence \texttt{0xFF 0x14 0xC5}. The following 
 32-bit address contains the lower part of the address of the syscall table,
-which then is or-ed bitwise with 0xffffffff00000000 because the RIP 
+which then is or-ed bitwise with 0xffffffff00000000, because the RIP 
 relative addressing omits the first 32 bits of the address. This address now 
 contains the full 64 bit address of the syscall table and is ready to use.

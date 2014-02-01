@@ -10,5 +10,5 @@ To grant the current user root access, we fetch the current task's
 the real, effective and file system operation user IDs and group IDs to zero 
 and commits the changes. Because the privilege escalation must be requested by 
 the current user using the ``sueme'' command, the current task always is a 
-virtual terminal. Empowering this process means that all following commands 
-issued by the user have root.
+virtual terminal. Empowering this process means that all subsequent processes 
+created by the user have root credentials.

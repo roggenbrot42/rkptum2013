@@ -24,7 +24,15 @@ vanish from \texttt{/sys/module/} but leads to a messed up reference counter
 and thus, prevents the kernel from unloading the kernel.\par
 Instead, we chose to manipulate the file operations of the \texttt{/sys/} 
 inode. The inode structure be can easily obtained from the \texttt{dentry} 
-structure returned by \texttt{kern\_path} function. Using this inode, we 
-replaced the \texttt{readdir} operation with our own method that makes use of 
-our custom \texttt{my\_filldir\_t} function. This  function simply returns 0 if 
-the filename is equal to that of our rootkit or calls the original method.
+structure returned by \texttt{kern\_path()}. Using this inode, we 
+replaced the \texttt{readdir} operation with our own method, which in turn 
+makes use of 
+our custom \texttt{my\_filldir\_t} function. This custom 
+\texttt{my\_filldir\_t} function simply returns 0 if 
+the filename is equal to that of our rootkit or else calls the original 
+method.\newline
+
+Because the rootkit is so well-hidden, it is impossible to remove the module 
+without unhiding it first. The unhiding mechanism simply performs a rollback to 
+the old status quo and can be initiated using the command and control channel. 
+See section \ref{cnc} for more information.

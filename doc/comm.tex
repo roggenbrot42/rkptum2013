@@ -1,4 +1,4 @@
-\section{Command and Control}
+\section{Command and Control}\label{cnc}
 The command and control code parses all input over stdin for possible user 
 commands. To do so, it hooks the \texttt{read} system call and filters for the 
 stdin file descriptor. Because many users can write to this file descriptor at 

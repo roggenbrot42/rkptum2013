@@ -1,8 +1,7 @@
 \section{Port knocking prevention}
 The idea behind the implemented port knocking prevention is to only allow a 
-certain
-IP address to connect to a service's port and conceal its existence to other 
-potential clients such as port scanners. 
+certain IP address to connect to a service's port and conceal its existence to 
+other potential clients such as port scanners. 
 This means that any incoming SYN packets sent by a forbidden client will be 
 answered with a RST packet. To achieve this,
 two methods come to mind:
@@ -13,8 +12,8 @@ RST flag accordingly
 fake negative results if not.
 \end{enumerate}
 To implement method 1, it is sufficient to hijack the 
-\verb+tcp_transmit_skb()+ function in ~\verb+net/ipv4/tcp_output.c+ and alter 
-the TCP flags found in the \verb+struct sk_buff+
+\verb+tcp_transmit_skb()+ function found in ~\texttt{net/ipv4/tcp\_output.c} 
+and alter the TCP flags found in the \verb+struct sk_buff+
 parameter to RST. Although this method successfully prevents any undesired 
 connections, tests showed that the kernel sends a SYN/ACK
 packet to the client nevertheless. This causes a ``connection closed 
