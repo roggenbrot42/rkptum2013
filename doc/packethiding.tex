@@ -1,37 +1,40 @@
 \section{Packet Hiding}
-%- Libcap sniffs network traffic through a PF_PACKET socket and receive clones 
-%      of packets. To hide packets, sniffed by libcap, one needs to hook the 
-%      function for receiving packets of packet sockets, used by libcap. The 
-%      functions that deal with the packets are implemented in 
-%      net/packet.af_packet.c: 
-%        int tpacket_rcv(struct sk_buff *, struct net_device *dev, struct packet_type *, struct net_device *); 
-%    - There are two ways to hook the function tpacket_rcv:
-%      - Change the operation pointer (point to the function tpacket_rcv) of the 
-%        struct packet_sock by hooking the syscall funktion:
-%        long sys_socket(int, int, int);
-%        (Not easy to reverse the pointer when unloading, especially to deal with 
-%        more than one packet socket.)
-%      - Inject assembler code to the origin tpacket_rcv function. One can use
-%        the assembler code:
-%          pushq imm32;
-%          retq;
-%        to cause the instruction pointer to jump to a hooking function.
-%        (Leads to exception, caused by too frequent traffic, because the original
-%        function is continously changed to the modified code version and reversed 
-%        to hide the packets of given IP address and report other packets at the
-%        same time)
-%----------------------------------------------------------------------------------
-%Implementation Details
-%    - void hide_packets(void): 
-%      - Read the address of the function packet_rcv using the kernel function 
-%        kallsys_lookup_name("tpacket_rcv"). 
-%      - Store the original 6 byte code of the function packet_rcv and replace it
-%        with the assembler code.
-%    - void unhide_packets(void): reverse the code injection.
-%-----------------------------------------------------------------------------------
-%Additional Notes
-%	  Please load the module, when tcpdump runs locally or via ssh with filter to not 
-%    sniff this ssh traffic. 
-%    Loading the module leads to exception, when tcpdump is runned via ssh without 
-%    filtering, because running tcpdump by ssh leads to loops and hence destroys 
-%    the hiding mechanism (See Technical note above).
+Libcap sniffs network traffic through a \texttt{PF\_PACKET} socket and receive clones 
+of packets. To hide packets, sniffed by libcap, one needs to hook the 
+function for receiving packets of packet sockets, used by libcap. The 
+functions that deal with the packets are implemented in \verb+net/packet.af_packet.c+: 
+\begin{center}
+\lstset{escapechar=,style=customc}
+	\begin{lstlisting}
+  	int tpacket_rcv(struct sk_buff *, struct net_device *dev, struct packet_type *, struct net_device *); 
+	\end{lstlisting}
+\end{center}
+There are two ways to hook the function \texttt{tpacket\_rcv}:
+\begin{itemize}
+\item Change the operation pointer (point to the function \texttt{tpacket\_rcv}) of the struct \texttt{packet\_sock} by hooking the syscall funktion:
+\begin{center}
+\lstset{escapechar=,style=customc}
+	\begin{lstlisting}
+  long sys_socket(int, int, int);
+		\end{lstlisting}
+\end{center}
+The disadvantage of this method is, it is complicated to reverse the pointer when unloading when more than one packet sockets are created. Furthermore, this pointer may be overwritten by other functions.
+\item Inject assembler code to the origin \texttt{tpacket\_rcv} function. One can overwrite the beginning of this origin function with the following six bytes assembler code:
+\begin{center}
+\lstset{escapechar=,style=customc}
+	\begin{lstlisting}
+    pushq imm32;
+    retq;
+	\end{lstlisting}
+\end{center}
+to cause the instruction pointer to jump to our own hooking function. The challenge of this method is to find out the address of the \texttt{tpacket\_rcv} function, because it is a static function.  
+\end{itemize}
+We have decided to do the packet hiding with the second way, because we have found out, the address of the function \texttt{tpacket\_rcv} can be read using the kernel function \texttt{kallsys\_lookup\_name}. Then, we used the assembler code to let the function \texttt{tpacket\_rcv} jumps to our own \texttt{tpacket\_rcv} function to check, whether the received packet should be hidden. If yes, just return 0 back, otherwise, the original function should be called. But the origin function is already overwritten, therefore we must spinlock the function and copy the origin code back before the calling. After that, the hijacking code will be copied to the beginning of the origin function again. \\
+When the network traffic is too frequent, exception can be occurred, because the original
+function is continuously changed to the modified code version and reversed 
+to hide the packets of given IP address and report other packets at the
+same time. We can't set spinlock out of the origin \texttt{tpacket\_rcv} function. Hence, if a thread is doing the memory copy inside our hooking function and an other one are calling the origin function, it might happen, that the first function (in the spinlock) is currently overwriting the original function, which is currently being executed by the second thread. This causes undefined behavior. 
+Unfortunately, we have still no ideal to solve the problem.
+\\
+The implementation of the network key-logging can be found in 
+\verb+packet_hiding.c+ and \verb+packet_hiding.h+\\ 
