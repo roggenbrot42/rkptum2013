@@ -2,7 +2,7 @@
 Every \texttt{struct task\_struct} in Linux has two sets of credentials. 
 \texttt{real\_cred} points to the real task credentials and \texttt{cred} points 
 to the effective task credentials. For privilege escalation, it is sufficient to 
-alter the effective credentials.\par
+alter the effective credentials.\\
 To manipulate these credentials it is required to use the appropriate functions 
 \texttt{prepare\_creds()} and \texttt{commit\_creds()}.
 To grant the current user root access, we fetch the current task's 

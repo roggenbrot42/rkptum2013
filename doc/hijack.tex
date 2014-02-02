@@ -1,11 +1,12 @@
 \section{Function Hijacking}
+\label{sec:hij}
 There are many cases in which the method above is insufficient for hooking a 
 function. It only works when the functions address is used indirectly using a 
 call table like the \verb+sys_call_table+ or a handler variable. Even then, it 
 is not always possible to successfully hook a function by replacing the address 
 in some memory location. This might be the case if the target function's 
 address is stored at multiple locations that are not clear or accessible when 
-the hooking is to take place.\par
+the hooking is to take place.\\
 To remedy these problems, we place two trampoline assembly instructions at the 
 beginning of the target function.
 \lstset{style=customasm}
@@ -24,7 +25,7 @@ The disadvantages become obvious immediately: although having the same number
 of instructions, this combination consumes seven instead of six bytes and 
 purges the content of a register. This leads to potentially 
 buggy code, and is therefore unacceptable.\newline
-
+\hfill\\
 In our implementation we stored the hijacking code in a six byte array, with 
 four zero-bytes as placeholder for the address.
 \lstset{style=customc}
@@ -36,9 +37,10 @@ target's entry point so it is possible to restore the original function.
 This is a desirable functionality, because we want the rootkit to be removable 
 without crashing the system afterwards. Also, the original function will not be 
 replaced by a new function, so, in most cases, we need to be able to use it for 
-our own purposes at any given time.\par
+our own purposes at any given time. The complete procedure is displayed in figure \ref{fig:control}\par
 \begin{figure}
 \centering
  \includegraphics{control_flow}
  \caption{Typical function hijacking control flow}
+ \label{fig:control}
 \end{figure}

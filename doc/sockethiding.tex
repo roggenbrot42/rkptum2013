@@ -1,24 +1,24 @@
 \section{Socket Hiding}
-Linux uses socket for inter-process communication. There are two standard tools for Linux to dump the socket statistics and connection information: \texttt{netstat} and \texttt{ss}. In order to hide sockets from the user space, it is neccessary to have a look at, how these tools acquire the socket information. \\
-\verb+/proc+ is a virtual filesystem of linux, which contains system runtime information like general network information. For example, the active TCP connections for ip v4 are listed the virtual file under the path \verb+/proc/net/tcp+. For UDP connections, it is under the path \verb+/proc/net/udp+.\\
+Linux uses sockets for inter-process communication. There are two standard tools for Linux, to dump socket statistics and connection information: \texttt{netstat} and \texttt{ss}. In order to hide sockets from user space, it is neccessary to have a look at, how these tools acquire the socket information. \\
+\verb+/proc+ is a virtual filesystem of linux, which contains system runtime information like general network information. For example, the active TCP connections for IPv4 are listed the virtual file under the path \verb+/proc/net/tcp+. For UDP connections, it can be found under the path \verb+/proc/net/udp+.\\
 Such virtual files are also called sequence files. The handler of sequence files 
-are defined as a structure called \verb+seq_operations+ (see figure 
-\ref{ls:op}). \verb+netstat+ calls the \verb+show+ function to print TCP and UDP 
+is defined as a structure called \verb+seq_operations+ (see figure 
+\ref{ls:op}). \verb+netstat+ calls the \verb+show+ function of this handler to print TCP and UDP 
 connections. Hence, we have tried to hook the \verb+show+ function.\\
 Using the function \verb+list_for_each_entry+, we have iterated over the network 
 namespace to get the \verb+proc_dir_entry+ (defined in 
 \verb+/fs/proc/internal.h+) for the TCP and UDP sequence files. The data 
 structure of the TCP sequence file is \verb+tcp_seq_afinfo+ (defined in 
 \verb+/net/tcp.h+). For the UDP sequence file it is \verb+udp_seq_afinfo+ 
-(defined in \verb+/net/udp.h+). The both structures can be got from the 
+(defined in \verb+/net/udp.h+). Both structures can be retrieved from the 
 \verb+data+ field of the \verb+list_for_each_entry+ structure. Now, we can 
-replace the \verb+show+ operation of the both sequence files with our own 
-functions. The parameter \verb+v+ of the function \verb+show+ of the both 
+replace the \verb+show+ operation of both sequence files with our own 
+functions. The parameter \verb+v+ of the function \verb+show+ of both 
 structures is either a pointer to the \verb+SEQ_START_TOKEN+ (defined in 
 \verb+/linux/seq_file.h+) or a pointer to a \verb+sock+ structure (defined in 
 \verb+/net/sock.h+). If \verb+v+ points to a \verb+sock+ structure and the 
 source port of the socket is specified by passing the command line parameter of 
-the module, then do nothing and return 0, otherwise, the stored original 
+the module, then we do nothing and return 0, otherwise, the stored original 
 \verb+show+ function will be called.
 \begin{center}
 \begin{figure}
@@ -41,9 +41,9 @@ struct seq_operations {
 \end{figure}
 \end{center}
 After that, \texttt{ss} will not print the connections with the specified 
-TCP/UDP source ports any more. But mit \texttt{ss} the current TCP connections 
-can be found out yet, because \texttt{ss} uses another mechanism to acquire TCP 
-socket information: using the syscall funtion 
+TCP/UDP source ports any more and \texttt{ss} too for UDP connections. But with \texttt{ss} the current TCP connections 
+can still be found out, because \texttt{ss} uses another mechanism to acquire TCP 
+socket information: the syscall function 
 \begin{center}
 \lstset{escapechar=,style=customc}
 \begin{lstlisting}
@@ -52,19 +52,19 @@ asmlinkage long sys_recvmsg(int fd, struct msghdr __user *msg, unsigned flags);
 \end{center}
 to gather TCP connection information from a netlink socket. Netlink is a socket 
 family for inter-process communication between user space and the kernel.\\
-Using the in section \ref{sec:syscallHooking} introduced mechanism, we have 
+Using the mechanism introduced in section \ref{sec:syscallHooking}, we have 
 rewritten the function \verb+recvmsg+. The kernel provides the function 
 \verb+sockfd_lookup+ (defined in \verb+/net/socket.c+) to find the socket 
 structure with the given file descriptor number (parameter \verb+fd+). If it is 
-a netlink socket, go through the netlink messages (read from 
+a netlink socket, we iterated over the netlink messages (read from 
 \verb+msg->msg_iov->iov_base+, netlink message header structure, type 
-\verb+struct \; nlmsghdr+ (defined in \verb+/uapi/linux/netlink.h+)). When one 
-of the specified ports is the source port of the message, shift the following 
+\verb+struct nlmsghdr+ (defined in \verb+/uapi/linux/netlink.h+)). When one 
+of the specified ports is the source port of the message, we shift the following 
 messages to overwrite the message and reduce the return value (the number of 
-received bytes). If nothing is left (all tcp sockets should be hidden), the type 
+received bytes). If nothing is left (all TCP sockets should be hidden), the type 
 of the netlink message header structure ( \verb+nlmsghdr+) should be change to 
 \verb+NLMSG_DONE+. \\
 Now, \texttt{ss} can not print any information about TCP sockets on the 
-localhost of the specified ports. The implementation can be found in 
+localhost with the specified ports. The implementation can be found in 
 \verb+socket_hiding.c+ and \verb+socket_hiding.h+\\
 

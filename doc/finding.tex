@@ -1,7 +1,7 @@
 \section{Finding the syscall table at runtime}
 Using predefined adresses limits the rootkit to the machine it was 
 built on. This of course is rarely useful, so this rootkit comes with a 
-mechanism to find the syscall table at runtime. \par
+mechanism to find the syscall table at runtime. \\
 The interrupt \texttt{int 0x80} for performing system calls was replaced by 
 \texttt{SYSCALL} and \texttt{SYSENTER} for 64-bit system calls. These processor 
 functions don't directly jump into a function in the \texttt{IDT} but call a 

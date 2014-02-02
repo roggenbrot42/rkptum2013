@@ -21,7 +21,7 @@ These folders get their information through the \texttt{kobject} structure, a
 member of \texttt{struct module\_kobject}, which in return is a member of 
 \texttt{struct module}. Deleting this \texttt{kobject} struct makes the module 
 vanish from \texttt{/sys/module/} but leads to a messed up reference counter 
-and thus, prevents the kernel from unloading the kernel.\par
+and thus, prevents the kernel from unloading the kernel.\\
 Instead, we chose to manipulate the file operations of the \texttt{/sys/} 
 inode. The inode structure be can easily obtained from the \texttt{dentry} 
 structure returned by \texttt{kern\_path()}. Using this inode, we 
@@ -31,7 +31,7 @@ our custom \texttt{my\_filldir\_t} function. This custom
 \texttt{my\_filldir\_t} function simply returns 0 if 
 the filename is equal to that of our rootkit or else calls the original 
 method.\newline
-
+\hfill\\
 Because the rootkit is so well-hidden, it is impossible to remove the module 
 without unhiding it first. The unhiding mechanism simply performs a rollback to 
 the old status quo and can be initiated using the command and control channel. 

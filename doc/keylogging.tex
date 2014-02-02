@@ -1,32 +1,32 @@
 \section{Network Packets Sending}
 There are two ways to send network packets from within the kernel:
 \begin{description}
-	\item[The netpool kernel API] Low-level network console, declared in \verb+/linux/netpoll.h+. Just support UDP protocol.
-	\item[The standard packet-sending API] Socket network protocol, declared in \verb+/linux/net.h+. The needed functions are \texttt{sock\_create}, \texttt{sock\_sendmsg} and \texttt{sock\_sock\_release}. This supports all kinds of protocols, 
+	\item[The netpool kernel API] Low-level network console, declared in \verb+/linux/netpoll.h+. Just supports UDP protocol.
+	\item[The standard packet-sending API] Socket network protocol, declared in \verb+/linux/net.h+. The needed functions are \texttt{sock\_create}, \texttt{sock\_sendmsg} and \texttt{sock\_sock\_release}. This supports all kinds of protocols. 
 \end{description}
 We have chosen the second method for packets sending. The whole process consists of the following steps:
 \begin{description}
 	\item[Create a socket]\hfill \\
-	Frist, we have initialised a pointer of a \texttt{socket} structure \texttt{sock}, and then used the function
+	First, we have initialised a pointer called \texttt{sock} to a \texttt{socket} structure, and then used the function
 \begin{center}
 \lstset{escapechar=,style=customc}
 	\begin{lstlisting}
 		sock_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP, &sock);
 	\end{lstlisting}
 \end{center}
-for allocate the socket and seting it up. The socket we need is a socket with the type \texttt{SOCK\_DGRAM} (connectionless) and the protocol \texttt{IPPROTO\_UDP}.
+for allocating the socket and setting it up. The socket we need is a socket with the type \texttt{SOCK\_DGRAM} (connectionless) and the protocol \texttt{IPPROTO\_UDP}.
   \item[Establish a connection] \hfill\\
-	Then, we defined a variable \texttt{sin} of the \texttt{sockaddr\_in} structure and filled it with specified target IP address and port. Now the socket handler function \texttt{connect} can be used to establish a connection.
+	Then, we defined a variable \texttt{sin} of the \texttt{sockaddr\_in} structure and filled it with the specified target IP address and port. Now the socket handler function \texttt{connect} can be used to establish a connection.
 	\item[Construct a packet] \hfill \\
-The linux packet structure called \texttt{msghdr} is defined in \verb+/linux/socket.h+. The field \texttt{msg\_name} should point to the target socket address and the field \texttt{msg\_iov} should point to the message content in a \texttt{iovec} structure (see \verb+/uapi/linux/uio.h+. 
+The linux packet structure called \texttt{msghdr} is defined in \verb+/linux/socket.h+. The field \texttt{msg\_name} should point to the target socket address and the field \texttt{msg\_iov} should point to the message content in a \texttt{iovec} structure (see \verb+/uapi/linux/uio.h+). 
 	\item[Send the packet] \hfill \\
-	After finishing constrcting a packet, it can be sent out using the function \texttt{sock\_sendmsg}. \\
-	One thing must to be considered is, that in kernel and user space, the virtual address space has different limits. Hence, we have set the maximum virtual address to the kernel address space before calling the function \texttt{sock\_sendmsg} in order to be sure, that the passed addresses are from the kernel space. This can be done using the \texttt{set\_fs} function defined in \verb+/asm/uaccess.h+
+	After finishing constructing a packet, it can be sent out, using the function \texttt{sock\_sendmsg}. \\
+	One thing, which must to be considered is, that in kernel and user space, the virtual address space has different limits. Hence, we have set the maximum virtual address to the kernel address space before calling the function \texttt{sock\_sendmsg} in order to be sure, that the passed addresses are from kernel space. This can be done using the \texttt{set\_fs} function defined in \verb+/asm/uaccess.h+
 	\item[Close the socket] \hfill \\
-	If one remove the module, the created socket should be closed using the function \texttt{sock\_release}
+	If one removes the module, the created socket should be closed using the function \texttt{sock\_ release}
 \end{description}
 \subsection{Network Key-logging}
-\texttt{syslog-ng} is a syslog-server for transmission of log messages. It can be configured to read log messages from a remote server and forwards them to the appropriate "destinations". It can be used as server for network key-logging, when one hooks the \texttt{sys\_read} function, packs the intercepted \texttt{stdin} data in UDP packets and sends them from within the kernel.\\ 
+\texttt{syslog-ng} is a syslog-server for transmission of log messages. It can be configured to read log messages from a remote server and to forward them to the appropriate "destinations". It can be used as server for network key-logging, when one hooks the \texttt{sys\_read} function, packs the intercepted \texttt{stdin} data in UDP packets and sends them from within the kernel.\\ 
 To open a port to read log messages via UDP, one has to specify it in syslog-ng.conf. The following syntax should be used:
 \begin{center}
 \lstset{escapechar=,style=customc}
@@ -34,21 +34,21 @@ To open a port to read log messages via UDP, one has to specify it in syslog-ng.
   	source s_net { udp(); };
 	\end{lstlisting}
 \end{center}
-By default, the remote server will listen on port 514. The listing port and ip address of the server can also be specified with the following syntax:
+By default, the remote server will listen on port 514. The listening port and ip address of the server can also be specified using the following syntax:
 \begin{center}
 \lstset{escapechar=,style=customc}
 	\begin{lstlisting}
   	source s_net { udp(ip(127.0.0.1) port(8000))}
 	\end{lstlisting}
 \end{center}
-To get syslog messages from the remote server, destinations, filters for messages and log paths should be also defined in syslog-ng config file.\\
+To get syslog messages from the remote server, messages destinations, filters and log paths should be also defined in syslog-ng configuration file.\\
 According to RFC 5424, a syslog message consists of mainly three parts:
 \begin{description}
 \item[PRI (priority value)] \hfill \\
 PRI is the sum of facility * 8 + severity in angle brackets. E.g. User-level
 messages have the facility 1 and informational messages have the severity 6.
-Then the PRI of a user-lvel informational message is <14>. 
-Our key logging messages have alreays PRI 14, hence the following filter 
+Then the PRI of a user-level informational message is $<$14$>$. 
+Our key logging messages  always have PRI 14, hence the following filter 
 syntax can be used to filter our logging messages in syslog-ng:
 \begin{center}
 \lstset{escapechar=,style=customc}

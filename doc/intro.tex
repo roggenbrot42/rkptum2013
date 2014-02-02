@@ -1,1 +1,14 @@
 \section{Introduction}
+\subsection{Requirements and Dependencies}
+The to introduced rootkit modules are implemented and tested for the Linux Kernel 3.10.16.\\
+To compile the modules, GCC and GNU Make are needed.
+\subsection{Installation instructions}
+\begin{description}
+	\item[Compile the module] \hfill\\
+  \verb+# make+
+  \item[Insert the module] \hfill\\
+	\verb+# insmod rootkit.ko [command line arguments]+\\
+{\small Details about the command line arguments for each modules can be found in README files.}
+  \item[Remove the module] \hfill\\
+  \verb+# rmmod rootkit+   
+	\end{description}

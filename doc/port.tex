@@ -21,7 +21,7 @@ unexpectedly'' error or similar on the client side rather than a
 ``connection refused''. Furthermore, the server's internal TCP state machine is 
 confused by this and retransmits the manipulated packet
 multiple times. Therefore, this approach is clearly unsuitable for a rootkit. 
-\par
+\\
 This is why method 2 was chosen for the rootkit. It intervenes with the 
 connection handling process directly when a packet arrives at transport layer.
 In the Linux kernel, every IPv4 TCP packet is handled by the 
