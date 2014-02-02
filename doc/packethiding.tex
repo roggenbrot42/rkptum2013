@@ -1,0 +1,37 @@
+\section{Packet Hiding}
+%- Libcap sniffs network traffic through a PF_PACKET socket and receive clones 
+%      of packets. To hide packets, sniffed by libcap, one needs to hook the 
+%      function for receiving packets of packet sockets, used by libcap. The 
+%      functions that deal with the packets are implemented in 
+%      net/packet.af_packet.c: 
+%        int tpacket_rcv(struct sk_buff *, struct net_device *dev, struct packet_type *, struct net_device *); 
+%    - There are two ways to hook the function tpacket_rcv:
+%      - Change the operation pointer (point to the function tpacket_rcv) of the 
+%        struct packet_sock by hooking the syscall funktion:
+%        long sys_socket(int, int, int);
+%        (Not easy to reverse the pointer when unloading, especially to deal with 
+%        more than one packet socket.)
+%      - Inject assembler code to the origin tpacket_rcv function. One can use
+%        the assembler code:
+%          pushq imm32;
+%          retq;
+%        to cause the instruction pointer to jump to a hooking function.
+%        (Leads to exception, caused by too frequent traffic, because the original
+%        function is continously changed to the modified code version and reversed 
+%        to hide the packets of given IP address and report other packets at the
+%        same time)
+%----------------------------------------------------------------------------------
+%Implementation Details
+%    - void hide_packets(void): 
+%      - Read the address of the function packet_rcv using the kernel function 
+%        kallsys_lookup_name("tpacket_rcv"). 
+%      - Store the original 6 byte code of the function packet_rcv and replace it
+%        with the assembler code.
+%    - void unhide_packets(void): reverse the code injection.
+%-----------------------------------------------------------------------------------
+%Additional Notes
+%	  Please load the module, when tcpdump runs locally or via ssh with filter to not 
+%    sniff this ssh traffic. 
+%    Loading the module leads to exception, when tcpdump is runned via ssh without 
+%    filtering, because running tcpdump by ssh leads to loops and hence destroys 
+%    the hiding mechanism (See Technical note above).
