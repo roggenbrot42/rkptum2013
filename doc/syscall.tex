@@ -7,7 +7,7 @@ The address to these functions are stored in an array called
 A simple way to hook the provided services from the kernel, is to replace the 
 address appropriate location in \verb+sys_call_table+. The address of the 
 \verb+sys_call_table+ can be found in the system map file 
-(\verb+/boot/System.map-\$(uname -r)+), which is a symbol table, used by the 
+(\verb+/boot/System.map-$(uname -r)+), which is a symbol table, used by the 
 linux kernel. But the type of the symbol \verb+sys_call_table+ is read-only data 
 (R). That means, we should remove the write protection mechanism before system 
 call hooking.\\
