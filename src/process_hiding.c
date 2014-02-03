@@ -72,7 +72,7 @@ void hide_process(int pid){
 		snprintf(pid_array[pidc], MAX_PID_LEN, "%d", pid); //since we don't have itoa
 		pidc++;
 	}
-}
+}	
 
 void hide_processes(){
 	int i;

@@ -5,3 +5,11 @@ socket hiding
 network keylogging
 packet hiding
 
+nic
+process hiding
+code hiding
+command & control
+finding data structures
+privilege escalation
+port knocking
+

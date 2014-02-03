@@ -1,5 +1,14 @@
 \section{Process Hiding}
-Get /proc/ root inode and replace its readdir operation by the rootkit's own
-"proc\_readdir". This function simply replaces the provided filldir function 
-by a filldir function that filters out the directories of all given (see 
-above) PIDs. 
+The tool \textit{ps} gets its information from the process filesystem. The 
+\texttt{/proc/} directory contains a folder for every process 
+currently run on the system. To hide certain processes from \textit{ps} we chose 
+to simply hide the corresponding folders in \texttt{/proc/}. 
+The PIDs can be passed to the module as a parameter or at runtime via command 
+(see \ref{cnc}). The hiding procedure is fairly easy and reused at many points 
+in the rootkit.
+
+The idea is to get the \texttt{/proc/} root inode structure and replace its 
+\texttt{readdir} operation by the rootkit's own
+\texttt{proc\_readdir}. This function simply replaces the provided 
+\texttt{filldir} function by a filldir function that filters out the 
+directories of all given PIDs. 

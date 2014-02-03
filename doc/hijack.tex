@@ -1,4 +1,4 @@
-\section{Function Hijacking}
+\section{Function hijacking}\label{hijack}
 There are many cases in which the method above is insufficient for hooking a 
 function. It only works when the functions address is used indirectly using a 
 call table like the \verb+sys_call_table+ or a handler variable. Even then, it 
@@ -26,7 +26,7 @@ purges the content of a register. This leads to potentially
 buggy code, and is therefore unacceptable.\newline
 
 In our implementation we stored the hijacking code in a six byte array, with 
-four zero-bytes as placeholder for the address.
+four zero-bytes as placeholder for the address and two bytes for the opcodes.
 \lstset{style=customc}
 \begin{lstlisting}
  static char hjc[HIJACK_LEN] = {0x68,0x0,0x0,0x0,0x0,0xc3};
@@ -36,7 +36,8 @@ target's entry point so it is possible to restore the original function.
 This is a desirable functionality, because we want the rootkit to be removable 
 without crashing the system afterwards. Also, the original function will not be 
 replaced by a new function, so, in most cases, we need to be able to use it for 
-our own purposes at any given time.\par
+our own purposes at any given time. Using this technique, it is possible to 
+hijack virtually every known function.
 \begin{figure}
 \centering
  \includegraphics{control_flow}
