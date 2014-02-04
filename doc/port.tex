@@ -29,7 +29,7 @@ In the Linux kernel, every IPv4 TCP packet is handled by the
 function uses the \texttt{\_\_inet\_lookup\_skb()} function to resolve the 
 socket 
 corresponding to the port number in the packet header. The rootkit hijacks this 
-function call (see section \ref{hijack}) and
+function call (see section \ref{sec:hij}) and
 redirects it to our own method that checks IP and port number against the values 
 provided in the rootkit's parameters. If the client IP
 is not allowed, it simply returns a zero value or else calls the original 

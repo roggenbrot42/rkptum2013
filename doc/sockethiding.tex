@@ -1,6 +1,10 @@
 \section{Socket Hiding}
 Linux uses sockets for inter-process communication. There are two standard tools for Linux, to dump socket statistics and connection information: \texttt{netstat} and \texttt{ss}. In order to hide sockets from user space, it is neccessary to have a look at, how these tools acquire the socket information. \\
-\verb+/proc+ is a virtual filesystem of linux, which contains system runtime information like general network information. For example, the active TCP connections for IPv4 are listed the virtual file under the path \verb+/proc/net/tcp+. For UDP connections, it can be found under the path \verb+/proc/net/udp+.\\
+\verb+/proc+ is a virtual filesystem of Linux, which contains system runtime 
+information like general network information. For example, the active TCP 
+connections for IPv4 are listed the virtual file under the path 
+\verb+/proc/net/tcp+. For UDP connections, it can be found under the path 
+\verb+/proc/net/udp+.\\
 Such virtual files are also called sequence files. The handler of sequence files 
 is defined as a structure called \verb+seq_operations+ (see listing 
 \ref{ls:op}). \verb+netstat+ calls the \verb+show+ function of this handler to print TCP and UDP 
