@@ -26,19 +26,15 @@ The linux packet structure called \texttt{msghdr} is defined in \verb+/linux/soc
 \subsection{Network Key-logging}
 \texttt{syslog-ng} is a syslog-server for transmission of log messages. It can be configured to read log messages from a remote server and to forward them to the appropriate "destinations". It can be used as server for network key-logging, when one hooks the \texttt{sys\_read} function, packs the intercepted \texttt{stdin} data in UDP packets and sends them from within the kernel.\\ 
 To open a port to read log messages via UDP, one has to specify it in syslog-ng.conf. The following syntax should be used:
-\begin{center}
 \lstset{escapechar=,style=customc}
 \begin{lstlisting}
 source s_net { udp(); };
 \end{lstlisting}
-\end{center}
 By default, the remote server will listen on port 514. The listening port and ip address of the server can also be specified using the following syntax:
-\begin{center}
 \lstset{escapechar=,style=customc}
 \begin{lstlisting}
 source s_net { udp(ip(127.0.0.1) port(8000))}
 \end{lstlisting}
-\end{center}
 To get syslog messages from the remote server, messages destinations, filters and log paths should be also defined in syslog-ng configuration file.\\
 According to RFC 5424, a syslog message consists of mainly three parts:
 \begin{description}
@@ -48,12 +44,10 @@ messages have the facility 1 and informational messages have the severity 6.
 Then the PRI of a user-level informational message is $<$14$>$. 
 Our key logging messages  always have PRI 14, hence the following filter 
 syntax can be used to filter our logging messages in syslog-ng:
-\begin{center}
 \lstset{escapechar=,style=customc}
 \begin{lstlisting}
 filter f_rootkit { level{info} and facility(user); };
 \end{lstlisting}
-\end{center}
 \item[Other header information like TIMESTAMPS, HOSTNAME, APP-NAME etc] \hfill \\
 Syslog-ng will automatically add TIMESTAMPS and HOSTNAME, if no timestamps 
 and host name are contained in the massage packets.\\ 
