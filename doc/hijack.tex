@@ -1,4 +1,5 @@
-\label{sec:hij}
+\section{Function hijacking} \label{sec:hij}
+
 There are many cases in which the method above is insufficient for hooking a 
 function. It only works when the functions address is used indirectly using a 
 call table like the \verb+sys_call_table+ or a handler variable. Even then, it 
@@ -6,6 +7,12 @@ is not always possible to successfully hook a function by replacing the address
 in some memory location. This might be the case if the target function's 
 address is stored at multiple locations that are not clear or accessible when 
 the hooking is to take place.\\
+\begin{figure}[h!]
+\centering
+ \includegraphics{control_flow}
+ \caption{Typical function hijacking control flow}
+ \label{fig:control}
+\end{figure}
 To remedy these problems, we place two trampoline assembly instructions at the 
 beginning of the target function.
 \lstset{style=customasm}
@@ -37,9 +44,4 @@ This is a desirable functionality, because we want the rootkit to be removable
 without crashing the system afterwards. Also, the original function will not be 
 replaced by a new function, so, in most cases, we need to be able to use it for 
 our own purposes at any given time. The complete procedure is displayed in figure \ref{fig:control}\par
-\begin{figure}
-\centering
- \includegraphics{control_flow}
- \caption{Typical function hijacking control flow}
- \label{fig:control}
-\end{figure}
+

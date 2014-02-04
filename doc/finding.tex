@@ -12,9 +12,12 @@ nevertheless, we get the address of the system call handler using the
 machine specific register long, indicating a 64-bit address). The source code 
 of the handler function is found at \texttt{arch/x86/kernel/entry.S:629}. It 
 calls the system calls with the following instruction: 
-\verb+call *syscall_table(,%rax,8)+. Using an opcode table, we were able to 
+\verb+call *syscall_table(,%rax,8)+. Since the \texttt{LSTAR} 
+register contains only the beginning of the handler function, it is necessary 
+to iterate through the function and look for the opcode sequence that decodes 
+to this instruction. Using an opcode table, we were able to 
 assemble this instruction to the sequence \texttt{0xFF 0x14 0xC5}. The following 
 32-bit address contains the lower part of the address of the syscall table,
 which then is or-ed bitwise with 0xffffffff00000000, because the RIP 
 relative addressing omits the first 32 bits of the address. This address now 
-contains the full 64 bit address of the syscall table and is ready to use.
+contains the full 64 bit address of the syscall table. 
