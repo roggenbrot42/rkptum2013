@@ -1,4 +1,4 @@
-\section{Introduction}
+\chapter{Introduction}
 This document describes the functionality of our loadable Linux kernel module 
 rootkit written during the \textbf{Praktikum Rootkit Programming} at the 
 \textbf{Technische Universität München}. The purpose of the rootkit is strictly 
@@ -7,16 +7,15 @@ data manipulation and function hooking. Due to the limited scope of this
 course, we imply the executing user to be able to load the module. The rootkit 
 itself does not consist of a single module but of many smaller modules that are 
 tailored to the specific assignment. However, during this document and for the 
-sake simplicity, we will disregard this fragmentation. The module was written in 
+sake simplicity, we will disregard this fragmentation. The module was written  in 
 C'99 for the \textbf{Linux Kernel} \texttt{3.10.16}.
 
-\subsection{Requirements and Dependencies}
+\section{Requirements and Dependencies}
 The rootkit modules are implemented and tested for the Linux Kernel 
 3.10.16.\\
 To compile the modules, GCC and GNU Make are needed.
-\paragraph*{Build prerequisites}
 
-\subsection{Installation instructions}
+\section{Installation instructions}
 \begin{description}
 \item[Compile the module] \hfill\\
   \verb+# make+
@@ -28,18 +27,24 @@ To compile the modules, GCC and GNU Make are needed.
 \end{description}
 
 \begin{subsubsection}{Command line arguments}
+\label{sec:arg}
+\begin{center}
 \begin{tabular}{|l|l|l|}
 \hline
 Parameter & Description & Assignment\\\hline
-\texttt{hide\_pid=xxx,...} & Hides process with PID xxx & 3\\ \hline
-\texttt{tcp\_ports=xxx,...}& Hides sockets with TCP port number xxx&6 \\ \hline
-\texttt{udp\_ports=xxx,...}& Hides sockets with UDP port number xxx&6 \\ \hline
-\texttt{port=xxx} & Port for network-keylogging&9 \\ \hline
-\texttt{ip=xxx.xxx.xxx.xxx} & Target IP for network-keylogging&9 \\ \hline
-\texttt{hidden\_ip\_str=xxx.xxx.xxx.xxx} & Hide packets from or to IP & 
-10\\\hline
-\texttt{allowed\_ip=xxx.xxx.xxx.xxx} & Allows connection from client with IP & 
-10\\\hline
-\texttt{hidden\_port=xxxx} & Hides port xxxx & 11\\ \hline
+\texttt{hide\_pid=xxx,...} & Hides process with PID xxx & 3 Process Hiding
+\\ \hline
+\texttt{tcp\_ports=xxx,...}& Hides sockets with TCP port number xxx& \multirow{2}{*}{6 Socket Hiding} 
+\\ \cline{1-2}
+\texttt{udp\_ports=xxx,...}& Hides sockets with UDP port number xxx& \\ \hline
+\texttt{port=xxx} & Port for network-keylogging&\multirow{2}{*}{9 Key logging} 
+\\ \cline{1-2}
+\texttt{ip=xxx.xxx.xxx.xxx} & Target IP for network-keylogging& \\ \hline
+\texttt{hidden\_ip\_str=xxx.xxx.xxx.xxx} & Hide packets from or to IP & 10 Packet Hiding
+\\\hline
+\texttt{allowed\_ip=xxx.xxx.xxx.xxx} & Allows connection from client with IP & \multirow{2}{*}{11 Port Knocking}
+\\\cline{1-2}
+\texttt{hidden\_port=xxxx} & Hides port xxxx & \\ \hline
 \end{tabular}
+\end{center}
 \end{subsubsection}

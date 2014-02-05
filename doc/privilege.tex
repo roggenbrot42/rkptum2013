@@ -1,4 +1,4 @@
-\section{Privilege escalation}
+\section{Privilege Escalation}
 Every \texttt{struct task\_struct} in Linux has two sets of credentials. 
 \texttt{real\_cred} points to the real task credentials and \texttt{cred} points 
 to the effective task credentials. For privilege escalation, it is sufficient to 
@@ -11,4 +11,6 @@ the real, effective and file system operation user IDs and group IDs to zero
 and commits the changes. Because the privilege escalation must be requested by 
 the current user using the ``sueme'' command, the current task always is a 
 virtual terminal. Empowering this process means that all subsequent processes 
-created by the user have root credentials.
+created by the user have root credentials.\\
+The implementation can be found in \verb+privilege_escalation.h+ and \verb+privilege_escalation.c+.
+					

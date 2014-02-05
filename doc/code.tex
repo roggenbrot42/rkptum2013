@@ -1,4 +1,4 @@
-\section{Hiding the module}
+\section{Module Hiding}
 There are two different ways to obtain information about the currently loaded 
 kernel modules: \texttt{/proc/modules} and \texttt{/sys/module/}. To hide from 
 these two sources, two different methods are required.
@@ -32,7 +32,8 @@ our custom \texttt{my\_filldir\_t} function. This custom
 the filename is equal to that of our rootkit or else calls the original 
 method.\newline
 \hfill\\
-Because the rootkit is so well-hidden, it is impossible to remove the module 
+The implementation of the module hiding can be found in \verb+code_hiding.h+ and \verb+code_hiding.c+.
+\\Because the rootkit is so well-hidden, it is impossible to remove the module 
 without unhiding it first. The unhiding mechanism simply performs a rollback to 
-the old status quo and can be initiated using the command and control channel. 
+the old status and can be initiated using the command and control channel. 
 See section \ref{cnc} for more information.

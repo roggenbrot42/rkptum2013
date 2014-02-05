@@ -20,4 +20,4 @@ struct linux_dirent {
       char d_name[];
 };
 \end{lstlisting}
-This feature is implemented in \verb+file_hiding.c+ and \verb+file_hiding.h+. If the function \verb+hide_files+ is called, the files with the prefix ``rootkit\_'' will not be listed, when the command \texttt{ls} is used. However they still are accessible, if you know the exact file name. After calling the function \verb+unhide_files+, the program ``ls'' can list all existing files again. 
+This feature is implemented in \verb+file_hiding.h+ and \verb+file_hiding.c+. If the function \verb+hide_files+ is called, the files with the prefix ``rootkit\_'' will not be listed, when the command \texttt{ls} is used. However they still are accessible, if you know the exact file name. After calling the function \verb+unhide_files+, the program ``ls'' can list all existing files again. 

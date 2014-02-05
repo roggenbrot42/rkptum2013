@@ -1,20 +1,30 @@
 \section{Command and Control}\label{cnc}
-The command and control code parses all input over stdin for possible user 
+The command and control code (implemented in \verb+command.h+ and \verb+command.c+) 
+parses all input from stdin for possible user 
 commands. To do so, it hooks the \texttt{read} system call and filters for the 
 stdin file descriptor. Because many users can write to this file descriptor at 
-the same time, the code holds a \verb+taskinput_buffer+ struct for each task in 
-a list. We decided to identify these input buffers by the name of the first 
+the same time. We created a list to collect \texttt{stdin} data for specific tasks.
+As a data structure for this list, we defined the following struct:
+\lstset{escapechar=,style=customc}
+\begin{lstlisting}
+struct taskinput_buffer{
+	char buf[INPUTBUFLEN];
+	unsigned short bufpos;
+	char * name;
+	struct list_head list;
+};
+\end{lstlisting}
+We decided to identify these input buffers by the name of the first 
 file in the list of open file descriptors of the current process. 
 This could be simplified by just using the process' ID.
 Tests have shown that the autocompletion used by bash causes filename to be 
 \texttt{NULL}, which is why autocompleted commands do not work. This could be 
-avoided by using process IDs instead of filenames.\par
-The \verb+taskinput_buffer+ structure contains a pointer to the current 
-location 
+avoided by using process IDs instead of filenames.\\
+The \verb+taskinput_buffer+ structure contains the current location 
 in the buffer, so the program can react appropriately if the user hits 
 backspace or presses enter. Pressing backspace decrements the location pointer 
 while pressing enter causes the rootkit to parse the buffer for commands and 
-resets the location pointer.\par
+resets the location pointer.\\
 To actually parse the commands, the rootkit holds a list of all known commands. 
 This list comprises of instances of the following structure:
 \lstset{escapechar=,style=customc}
@@ -28,16 +38,15 @@ struct command{
 	struct list_head list;
 }
 \end{lstlisting}
-The 64 bit \texttt{hashcode} member is made up of up to eight characters of 
-each command and used as a unique identifier. This saves time when traversing 
+The 64 bit \texttt{hashcode} member stores up to eight characters of 
+each command and is used as a unique identifier. This saves time when traversing 
 the list of commands, because it is potentially faster to compare integers than 
 strings. Commands can have three types of arguments: none, integer and list of 
 integers (comma separated).
 Furthermore, each command has a pointer to a \texttt{handler} function that 
-will 
-execute the command. In the case of integer lists, the handler function is 
-called for each item separately. 
-\begin{figure}[h]
+will execute the command. In the case of integer lists, the handler function is 
+called for each item separately. The implemented user commands, which are initialized when loading the module, as well as needed parameters are listed in table \ref{tab:com}
+\begin{table}[h]
 \centering
 \begin{tabular}{|l|l|l|}
 \hline
@@ -52,4 +61,5 @@ sockudp & port1,port2,... & Hide UDP sockets \\\hline
 sueme & none & Grant current user root access\\\hline
 \end{tabular}
 \caption{List of all commands known to the rootkit}
-\end{figure}
+\label{tab:com}
+\end{table}

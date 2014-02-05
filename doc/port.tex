@@ -22,7 +22,7 @@ unexpectedly'' error or similar on the client side rather than a
 confused by this and retransmits the manipulated packet
 multiple times. Therefore, this approach is clearly unsuitable for a rootkit. 
 \\
-This is why method 2 was chosen for the rootkit. It intervenes with the 
+This is why method 2 was chosen for the rootkit (see \verb+port_knocking.h+ and \verb+port_knocking.c+). It intervenes with the 
 connection handling process directly when a packet arrives at transport layer.
 In the Linux kernel, every IPv4 TCP packet is handled by the 
 \texttt{tcp\_v4\_rcv()} function. This 
@@ -33,8 +33,7 @@ function call (see section \ref{sec:hij}) and
 redirects it to our own method that checks IP and port number against the values 
 provided in the rootkit's parameters. If the client IP
 is not allowed, it simply returns a zero value or else calls the original 
-lookup 
-function.
+lookup function.\\
 However, method still is far from perfection since it can still be circumvented 
 by spoofing an accepted IP address obtained by external packet monitoring 
 software.

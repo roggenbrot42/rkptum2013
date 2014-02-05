@@ -1,6 +1,7 @@
 \documentclass[a4paper,10pt]{report}
 \usepackage[a4paper]{geometry}
 \usepackage[utf8]{inputenc}
+\usepackage{multirow}
 \usepackage{listings}
 \usepackage{graphicx}
 \usepackage{xcolor}
@@ -31,8 +32,8 @@
 }
 
 
-\setcounter{chapter}{1}
-\setcounter{section}{-1}
+%\setcounter{chapter}{1}
+%\setcounter{section}{-1}
 
 % Title Page
 \title{Praktikum Rootkit Programming\\Technical Writeup}
@@ -43,14 +44,15 @@
 \tableofcontents
 \clearpage
 \input{intro}
+\chapter{Features}
 \input{syscall}
 \input{hijack}
 \input{finding}
+\input{proc}
 \input{filehiding}
 \input{sockethiding}
-\input{proc}
-\input{comm}
 \input{code}
+\input{comm}
 \input{privilege}
 \input{keylogging}
 \input{packethiding}
