@@ -29,22 +29,37 @@ To compile the modules, GCC and GNU Make are needed.
 \begin{subsubsection}{Command line arguments}
 \label{sec:arg}
 \begin{center}
-\begin{tabular}{|l|l|l|}
+\begin{tabularx}{\textwidth}{|l|X|X|}
 \hline
 Parameter & Description & Assignment\\\hline
 \texttt{hide\_pid=xxx,...} & Hides process with PID xxx & 3 Process Hiding
 \\ \hline
-\texttt{tcp\_ports=xxx,...}& Hides sockets with TCP port number xxx& \multirow{2}{*}{6 Socket Hiding} 
+\texttt{tcp\_ports=xxx,...}& Hides sockets with TCP port number xxx& 6 Socket 
+Hiding 
 \\ \cline{1-2}
 \texttt{udp\_ports=xxx,...}& Hides sockets with UDP port number xxx& \\ \hline
-\texttt{port=xxx} & Port for network-keylogging&\multirow{2}{*}{9 Key logging} 
+\texttt{port=xxx} & Port for network-keylogging&9 Key logging
 \\ \cline{1-2}
 \texttt{ip=xxx.xxx.xxx.xxx} & Target IP for network-keylogging& \\ \hline
 \texttt{hidden\_ip\_str=xxx.xxx.xxx.xxx} & Hide packets from or to IP & 10 Packet Hiding
 \\\hline
-\texttt{allowed\_ip=xxx.xxx.xxx.xxx} & Allows connection from client with IP & \multirow{2}{*}{11 Port Knocking}
+\texttt{allowed\_ip=xxx.xxx.xxx.xxx} & Allows connection from client with IP & 
+11 Port Knocking
 \\\cline{1-2}
 \texttt{hidden\_port=xxxx} & Hides port xxxx & \\ \hline
-\end{tabular}
+\end{tabularx}
 \end{center}
 \end{subsubsection}
+
+\section{File structure}
+\begin{tabularx}{\textwidth}{|X|X|X|}
+\hline
+Filename & Description & Assignment \\ \hline
+Makefile & The makefile used in this project.\newline Runs the kernel 
+build routine and runs the sysmap.sh & All \\ \hline
+sysmap.sh & Converts contents the /boot/System.map* file to a usable header 
+file (sysmap.h) & All \\ \hline
+main.c & Main source file of the rootkit & All \\ \hline
+codehiding.\{c,h\} & . & 1 \\ \hline
+commands.\{c,h\} & . &1 \\ \hline
+\end{tabularx}
